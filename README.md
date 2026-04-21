@@ -1,22 +1,36 @@
-# 股权激励管理系统
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-内部股权激励(RSU / Option)管理平台。
+## Getting Started
 
-## 文档
+First, run the development server:
 
-- 完整 PRD:[docs/PRD.md](./docs/PRD.md)
-- Claude Code 工作指南:[CLAUDE.md](./CLAUDE.md)
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
 
-## 开发阶段
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-- [ ] Session 1: 地基(项目初始化 + 认证 + 权限)
-- [ ] Session 2: 核心引擎(Vesting + 状态机 + FIFO)
-- [ ] Session 3: 基础数据 CRUD
-- [ ] Session 4: 授予管理 + 定时任务
-- [ ] Session 5: 税务事件 + 资产管理
-- [ ] Session 6: 员工端
-- [ ] Session 7: 打磨上线
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-## 本地运行
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-(Session 1 完成后补充)
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
