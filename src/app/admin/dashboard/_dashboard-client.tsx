@@ -33,7 +33,7 @@ export function DashboardClient() {
     <div className="space-y-6">
       <h1 className="text-xl font-semibold">仪表盘</h1>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="员工"
           total={data?.employees.total}
@@ -62,7 +62,7 @@ export function DashboardClient() {
 
       <div className="rounded-lg border border-border bg-background p-6">
         <h2 className="mb-3 text-sm font-semibold">快捷操作</h2>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <Link href="/admin/plans?action=create">
             <Button variant="outline">+ 创建计划</Button>
           </Link>
@@ -94,11 +94,15 @@ function StatCard({
       href={href}
       className="block rounded-lg border border-border bg-background p-5 transition-colors hover:border-primary"
     >
-      <div className="text-sm text-muted-foreground">{label}</div>
-      <div className="mt-2 text-3xl font-semibold">
+      <div className="whitespace-nowrap text-sm text-muted-foreground">
+        {label}
+      </div>
+      <div className="mt-2 whitespace-nowrap text-3xl font-semibold">
         {total ?? "—"}
       </div>
-      <div className="mt-1 text-xs text-muted-foreground">{sub}</div>
+      <div className="mt-1 whitespace-nowrap text-xs text-muted-foreground">
+        {sub}
+      </div>
     </Link>
   );
 }

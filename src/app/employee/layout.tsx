@@ -9,7 +9,7 @@ const NAV = [
   { href: "/employee/grants", label: "授予记录" },
   { href: "/employee/vesting", label: "归属详情" },
   { href: "/employee/requests", label: "申请记录" },
-  { href: "/employee/tax-events", label: "税务记录" },
+  { href: "/employee/tax-records", label: "税务记录" },
 ];
 
 export default async function EmployeeLayout({

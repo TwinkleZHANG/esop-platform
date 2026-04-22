@@ -261,32 +261,14 @@ export function GrantFormDialog({ open, onOpenChange, onSubmit }: Props) {
             <section className="space-y-3">
               <h3 className="text-sm font-semibold">归属计划</h3>
               <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <Label>归属年限 *</Label>
-                  <NativeSelect
-                    value={String(form.vestingYears)}
-                    onChange={(v) =>
-                      setForm({ ...form, vestingYears: Number(v) })
-                    }
-                    options={[1, 2, 3, 4, 5].map((n) => ({
-                      value: String(n),
-                      label: `${n} 年`,
-                    }))}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label>悬崖期 *</Label>
-                  <NativeSelect
-                    value={String(form.cliffMonths)}
-                    onChange={(v) =>
-                      setForm({ ...form, cliffMonths: Number(v) })
-                    }
-                    options={[0, 6, 12, 18, 24].map((n) => ({
-                      value: String(n),
-                      label: `${n} 月`,
-                    }))}
-                  />
-                </div>
+                <YearsPicker
+                  value={form.vestingYears}
+                  onChange={(n) => setForm({ ...form, vestingYears: n })}
+                />
+                <CliffPicker
+                  value={form.cliffMonths}
+                  onChange={(n) => setForm({ ...form, cliffMonths: n })}
+                />
                 <div className="space-y-1">
                   <Label>归属频率 *</Label>
                   <NativeSelect
@@ -331,5 +313,102 @@ export function GrantFormDialog({ open, onOpenChange, onSubmit }: Props) {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+const PRESET_YEARS = [1, 2, 3, 4, 5];
+const PRESET_CLIFF = [0, 6, 12, 18, 24];
+
+function YearsPicker({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+}) {
+  const isCustom = !PRESET_YEARS.includes(value);
+  const [custom, setCustom] = useState(isCustom);
+  return (
+    <div className="space-y-1">
+      <Label>归属年限 *</Label>
+      <NativeSelect
+        value={custom ? "CUSTOM" : String(value)}
+        onChange={(v) => {
+          if (v === "CUSTOM") {
+            setCustom(true);
+          } else {
+            setCustom(false);
+            onChange(Number(v));
+          }
+        }}
+        options={[
+          ...PRESET_YEARS.map((n) => ({
+            value: String(n),
+            label: `${n} 年`,
+          })),
+          { value: "CUSTOM", label: "自定义" },
+        ]}
+      />
+      {custom && (
+        <Input
+          type="number"
+          min="1"
+          step="1"
+          placeholder="年"
+          value={isCustom ? value : ""}
+          onChange={(e) => {
+            const n = Number(e.target.value);
+            if (Number.isInteger(n) && n > 0) onChange(n);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function CliffPicker({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+}) {
+  const isCustom = !PRESET_CLIFF.includes(value);
+  const [custom, setCustom] = useState(isCustom);
+  return (
+    <div className="space-y-1">
+      <Label>悬崖期 *</Label>
+      <NativeSelect
+        value={custom ? "CUSTOM" : String(value)}
+        onChange={(v) => {
+          if (v === "CUSTOM") {
+            setCustom(true);
+          } else {
+            setCustom(false);
+            onChange(Number(v));
+          }
+        }}
+        options={[
+          ...PRESET_CLIFF.map((n) => ({
+            value: String(n),
+            label: `${n}个月`,
+          })),
+          { value: "CUSTOM", label: "自定义" },
+        ]}
+      />
+      {custom && (
+        <Input
+          type="number"
+          min="0"
+          step="1"
+          placeholder="个月"
+          value={isCustom ? value : ""}
+          onChange={(e) => {
+            const n = Number(e.target.value);
+            if (Number.isInteger(n) && n >= 0) onChange(n);
+          }}
+        />
+      )}
+    </div>
   );
 }

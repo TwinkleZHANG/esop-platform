@@ -41,11 +41,18 @@ export function ValuationsClient() {
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
 
+  const [hasGap, setHasGap] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/valuations?page=${page}`);
-    const json = await res.json();
-    if (json.success) setData(json.data);
+    const [listRes, badgesRes] = await Promise.all([
+      fetch(`/api/valuations?page=${page}`),
+      fetch(`/api/sidebar-badges`),
+    ]);
+    const listJson = await listRes.json();
+    if (listJson.success) setData(listJson.data);
+    const badgesJson = await badgesRes.json();
+    if (badgesJson.success) setHasGap(badgesJson.data.valuations > 0);
     setLoading(false);
   }, [page]);
 
@@ -83,6 +90,13 @@ export function ValuationsClient() {
 
   return (
     <>
+      {hasGap && (
+        <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+          <strong>缺少估值：</strong>
+          有归属记录到期但缺少对应日期的估值记录，无法生成税务事件。请添加估值记录，系统将在下次定时任务时自动补生成。
+        </div>
+      )}
+
       <ListPageShell
         title="估值管理"
         actions={
