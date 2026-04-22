@@ -2,6 +2,14 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
+// 角色常量。避免在 Edge Runtime 中间件里直接 import @prisma/client。
+const ROLE = {
+  SUPER_ADMIN: "SUPER_ADMIN",
+  GRANT_ADMIN: "GRANT_ADMIN",
+  APPROVAL_ADMIN: "APPROVAL_ADMIN",
+  EMPLOYEE: "EMPLOYEE",
+} as const;
+
 const PUBLIC_PATHS = ["/login"];
 
 export async function middleware(req: NextRequest) {
@@ -14,6 +22,7 @@ export async function middleware(req: NextRequest) {
   const isPublic = PUBLIC_PATHS.includes(pathname);
   const isChangePassword = pathname === "/change-password";
 
+  // 未登录：仅允许访问登录页，其他一律重定向
   if (!token) {
     if (isPublic) return NextResponse.next();
     const url = req.nextUrl.clone();
@@ -38,7 +47,38 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // 角色路由保护（PRD 7.3）
+  const role = token.role as string;
+  const isAdmin =
+    role === ROLE.SUPER_ADMIN ||
+    role === ROLE.GRANT_ADMIN ||
+    role === ROLE.APPROVAL_ADMIN;
+  const isEmployee = role === ROLE.EMPLOYEE;
+  const isSuperAdmin = role === ROLE.SUPER_ADMIN;
+
+  // 员工不得访问 /admin/*
+  if (pathname.startsWith("/admin") && !isAdmin) {
+    return redirectForbidden(req, isEmployee ? "/employee" : "/login");
+  }
+
+  // 管理员不得访问 /employee/*
+  if (pathname.startsWith("/employee") && !isEmployee) {
+    return redirectForbidden(req, "/admin");
+  }
+
+  // 用户管理仅超管
+  if (pathname.startsWith("/admin/user-management") && !isSuperAdmin) {
+    return redirectForbidden(req, "/admin");
+  }
+
   return NextResponse.next();
+}
+
+function redirectForbidden(req: NextRequest, fallback: string) {
+  const url = req.nextUrl.clone();
+  url.pathname = fallback;
+  url.search = "";
+  return NextResponse.redirect(url);
 }
 
 export const config = {
