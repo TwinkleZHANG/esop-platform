@@ -1182,6 +1182,8 @@ model Valuation {
   description     String?
   createdAt       DateTime @default(now())
 
+  taxEvents       TaxEvent[]
+
   @@map("valuations")
 }
 
@@ -1296,6 +1298,7 @@ model TaxEvent {
   quantity           Decimal                               // 本次操作的数量
   eventDate          DateTime
   fmvAtEvent         Decimal
+  valuationId        String?                               // 取值来源：4.4 节 FMV 引用规则（日期 ≤ 触发日 的最近一条），用于「作为触发日 FMV 来源」的删除约束判定
   strikePrice        Decimal           @default(0)
   status             TaxEventStatus    @default(PENDING_PAYMENT)
   receiptFiles       String[]                              // 员工上传的凭证文件路径（最多 3 个）
@@ -1307,6 +1310,7 @@ model TaxEvent {
   grant              Grant             @relation(fields: [grantId], references: [id])
   user               User              @relation(fields: [userId], references: [id])
   operationRequest   OperationRequest?  @relation(fields: [operationRequestId], references: [id])
+  valuation          Valuation?        @relation(fields: [valuationId], references: [id])
 
   @@map("tax_events")
 }
