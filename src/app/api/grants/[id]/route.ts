@@ -15,6 +15,7 @@ import {
 } from "@/lib/api-utils";
 import { generateVestingSchedule } from "@/lib/vesting";
 import { validateGrantTransition } from "@/lib/state-machine";
+import { createStatusLog } from "@/lib/audit";
 
 const updateSchema = z.object({
   holdingEntityId: z.string().nullable().optional(),
@@ -238,14 +239,14 @@ export async function PATCH(
           status: VestingRecordStatus.PENDING,
         })),
       });
-      await tx.statusChangeLog.create({
-        data: {
-          grantId: grant.id,
-          fromStatus: grant.status,
-          toStatus: GrantStatus.GRANTED,
-          operatorName: session.user.name ?? session.user.email ?? "系统",
-        },
-      });
+      await createStatusLog(
+        grant.id,
+        grant.status,
+        GrantStatus.GRANTED,
+        session.user.name ?? session.user.email ?? "系统",
+        null,
+        tx
+      );
     });
 
     return ok({ id: grant.id, status: GrantStatus.GRANTED });
@@ -302,15 +303,14 @@ export async function PATCH(
         },
       });
 
-      await tx.statusChangeLog.create({
-        data: {
-          grantId: grant.id,
-          fromStatus: grant.status,
-          toStatus: targetStatus,
-          operatorName: session.user.name ?? session.user.email ?? "系统",
-          legalDocument: d.closedReason,
-        },
-      });
+      await createStatusLog(
+        grant.id,
+        grant.status,
+        targetStatus,
+        session.user.name ?? session.user.email ?? "系统",
+        d.closedReason,
+        tx
+      );
     });
 
     return ok({ id: grant.id, status: targetStatus });
