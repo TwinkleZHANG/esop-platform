@@ -40,6 +40,8 @@ export async function GET(req: Request) {
   const search = (url.searchParams.get("search") ?? "").trim();
   const status = url.searchParams.get("status");
 
+  const hasPending = url.searchParams.get("hasPending") === "1";
+
   const where: Prisma.GrantWhereInput = {};
   if (status && status !== "ALL") {
     where.status = status as GrantStatus;
@@ -50,6 +52,9 @@ export async function GET(req: Request) {
       { plan: { id: { contains: search, mode: "insensitive" } } },
       { user: { name: { contains: search, mode: "insensitive" } } },
     ];
+  }
+  if (hasPending) {
+    where.operationRequests = { some: { status: "PENDING" } };
   }
 
   const [items, total] = await Promise.all([
