@@ -175,7 +175,9 @@ export function PlansClient() {
             ) : (
               data.items.map((p) => (
                 <TableRow key={p.id}>
-                  <TableCell>{p.title}</TableCell>
+                  <TableCell className="max-w-[220px] truncate">
+                    {p.title}
+                  </TableCell>
                   <TableCell>{p.type}</TableCell>
                   <TableCell>{p.jurisdiction}</TableCell>
                   <TableCell>{p.poolSize}</TableCell>

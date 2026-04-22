@@ -28,9 +28,7 @@ const updateSchema = z.object({
   employmentStatus: z.enum(["在职", "离职"]).optional(),
   // 置为「离职」时必填：关闭原因 + 行权窗口期（0/30/90/365，用于 Option Grant 的 Closing）
   offboardReason: z.string().optional(),
-  exerciseWindowDays: z
-    .union([z.literal(0), z.literal(30), z.literal(90), z.literal(365)])
-    .optional(),
+  exerciseWindowDays: z.number().int().min(0).max(3650).optional(),
 });
 
 export async function GET(

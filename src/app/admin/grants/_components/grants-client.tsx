@@ -218,8 +218,12 @@ export function GrantsClient() {
             ) : (
               data.items.map((g) => (
                 <TableRow key={g.id}>
-                  <TableCell>{g.user.name}</TableCell>
-                  <TableCell>{g.plan.title}</TableCell>
+                  <TableCell className="max-w-[160px] truncate">
+                    {g.user.name}
+                  </TableCell>
+                  <TableCell className="max-w-[220px] truncate">
+                    {g.plan.title}
+                  </TableCell>
                   <TableCell>{g.plan.type}</TableCell>
                   <TableCell>{g.totalQuantity}</TableCell>
                   <TableCell>{g.strikePrice}</TableCell>

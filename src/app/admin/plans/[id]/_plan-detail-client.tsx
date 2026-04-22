@@ -118,22 +118,24 @@ export function PlanDetailClient({ planId }: { planId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
           <Link
             href="/admin/plans"
             className="text-sm text-muted-foreground hover:underline"
           >
             ← 返回列表
           </Link>
-          <h1 className="text-xl font-semibold">{plan.title}</h1>
+          <h1 className="min-w-0 max-w-full break-words text-xl font-semibold">
+            {plan.title}
+          </h1>
           {isPending ? (
             <StatusBadge tone="warn">审批中</StatusBadge>
           ) : (
             <StatusBadge tone="success">已通过</StatusBadge>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {canEdit && isPending && (
             <Button variant="outline" onClick={() => setEditOpen(true)}>
               编辑
@@ -147,7 +149,7 @@ export function PlanDetailClient({ planId }: { planId: string }) {
         </div>
       </div>
 
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-4 rounded-lg border border-border bg-background p-6 text-sm">
+      <dl className="grid grid-cols-1 gap-x-6 gap-y-4 rounded-lg border border-border bg-background p-6 text-sm sm:grid-cols-2">
         <Field label="计划ID" value={plan.id} />
         <Field label="激励类型" value={plan.type} />
         <Field label="适用法域" value={plan.jurisdiction} />
@@ -179,9 +181,9 @@ export function PlanDetailClient({ planId }: { planId: string }) {
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-1 font-medium">{value}</dd>
+      <dd className="mt-1 break-words font-medium">{value}</dd>
     </div>
   );
 }

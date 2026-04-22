@@ -19,12 +19,12 @@ export function ListPageShell({
 }) {
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">{title}</h1>
         {actions}
       </div>
       {toolbar}
-      <div className="rounded-lg border border-border bg-background">
+      <div className="overflow-x-auto rounded-lg border border-border bg-background">
         {children}
       </div>
       {pagination}

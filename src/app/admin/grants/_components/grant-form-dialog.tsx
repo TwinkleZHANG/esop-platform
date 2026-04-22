@@ -212,8 +212,10 @@ export function GrantFormDialog({ open, onOpenChange, onSubmit }: Props) {
                     onChange={(e) =>
                       setForm({ ...form, vestingStartDate: e.target.value })
                     }
-                    placeholder="默认等于授予日期"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    留空则默认等于授予日期
+                  </p>
                 </div>
               </div>
             </section>

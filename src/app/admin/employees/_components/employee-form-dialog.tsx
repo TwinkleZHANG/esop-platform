@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
+import { WindowDaysPicker } from "@/components/window-days-picker";
 import { JURISDICTION_OPTIONS } from "@/lib/i18n";
 import { EmployerEntityPicker } from "./employer-entity-picker";
 
@@ -28,7 +29,7 @@ export interface EmployeeFormValue {
   employmentStatus?: "在职" | "离职";
   // 从在职切到离职时必填，编辑模式以外忽略
   offboardReason?: string;
-  exerciseWindowDays?: 0 | 30 | 90 | 365;
+  exerciseWindowDays?: number;
 }
 
 const DEFAULT_VALUE: EmployeeFormValue = {
@@ -250,25 +251,11 @@ export function EmployeeFormDialog({
                   </div>
                   <div className="space-y-1">
                     <Label>行权窗口期 *（仅 Option 可操作期权 &gt; 0 的 Grant 使用）</Label>
-                    <NativeSelect
-                      value={
-                        form.exerciseWindowDays !== undefined
-                          ? String(form.exerciseWindowDays)
-                          : ""
+                    <WindowDaysPicker
+                      value={form.exerciseWindowDays}
+                      onChange={(n) =>
+                        setForm({ ...form, exerciseWindowDays: n })
                       }
-                      onChange={(v) =>
-                        setForm({
-                          ...form,
-                          exerciseWindowDays: Number(v) as 0 | 30 | 90 | 365,
-                        })
-                      }
-                      options={[
-                        { value: "", label: "请选择" },
-                        { value: "0", label: "0 天（立即关闭）" },
-                        { value: "30", label: "30 天" },
-                        { value: "90", label: "90 天" },
-                        { value: "365", label: "365 天" },
-                      ]}
                     />
                   </div>
                 </div>

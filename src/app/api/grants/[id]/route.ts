@@ -37,12 +37,7 @@ const patchSchema = z.object({
   ]),
   agreementId: z.string().optional().nullable(),
   closedReason: z.string().optional().nullable(),
-  exerciseWindowDays: z.union([
-    z.literal(0),
-    z.literal(30),
-    z.literal(90),
-    z.literal(365),
-  ]).optional(),
+  exerciseWindowDays: z.number().int().min(0).max(3650).optional(),
 });
 
 export async function GET(

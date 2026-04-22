@@ -21,8 +21,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
+import { WindowDaysPicker } from "@/components/window-days-picker";
+import { EditDraftDialog } from "./_edit-draft-dialog";
 import {
   Table,
   TableBody,
@@ -139,6 +140,7 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
 
   const [advanceOpen, setAdvanceOpen] = useState(false);
   const [closeOpen, setCloseOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [approvalTarget, setApprovalTarget] = useState<
     GrantDetail["operationRequests"][number] | null
   >(null);
@@ -176,27 +178,27 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
   })();
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+    <div className="min-w-0 space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
           <Link
             href="/admin/grants"
             className="text-sm text-muted-foreground hover:underline"
           >
             ← 返回列表
           </Link>
-          <h1 className="text-xl font-semibold">
+          <h1 className="min-w-0 max-w-full break-words text-xl font-semibold">
             {grant.user.name} · {grant.plan.title}
           </h1>
           <StatusBadge tone={GRANT_STATUS_TONE[grant.status]}>
             {GRANT_STATUS_LABEL[grant.status]}
           </StatusBadge>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {canEdit && isDraft && (
-            <Link href={`/admin/grants/${grantId}?edit=1`}>
-              <Button variant="outline">编辑</Button>
-            </Link>
+            <Button variant="outline" onClick={() => setEditOpen(true)}>
+              编辑
+            </Button>
           )}
           {canAdvance && isDraft && (
             <Button onClick={() => setAdvanceOpen(true)}>推进到已授予</Button>
@@ -211,7 +213,7 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
 
       {/* ① 授予信息 */}
       <Section title="授予信息">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+        <div className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
           <Field label="权利 ID" value={grant.id} />
           <Field label="计划" value={grant.plan.title} />
           <Field label="激励类型" value={grant.plan.type} />
@@ -422,6 +424,13 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
         )}
       </Section>
 
+      <EditDraftDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        grantId={grantId}
+        initial={grant}
+        onDone={load}
+      />
       <AdvanceDialog
         open={advanceOpen}
         onOpenChange={setAdvanceOpen}
@@ -454,7 +463,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-lg border border-border bg-background p-5">
+    <section className="overflow-x-auto rounded-lg border border-border bg-background p-5">
       <h2 className="mb-3 text-sm font-semibold">{title}</h2>
       {children}
     </section>
@@ -463,9 +472,9 @@ function Section({
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div>
+    <div className="min-w-0">
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 font-medium">{value}</dd>
+      <dd className="mt-0.5 break-words font-medium">{value}</dd>
     </div>
   );
 }
@@ -562,14 +571,14 @@ function CloseDialog({
 }) {
   const needsWindow = planType === "OPTION" && Number(operableOptions) > 0;
   const [reason, setReason] = useState("");
-  const [days, setDays] = useState<string>("30");
+  const [days, setDays] = useState<number | undefined>(30);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (open) {
       setReason("");
-      setDays("30");
+      setDays(30);
       setError(null);
     }
   }, [open]);
@@ -577,6 +586,9 @@ function CloseDialog({
   async function submit() {
     setError(null);
     if (!reason.trim()) return setError("关闭原因必填");
+    if (needsWindow && (days === undefined || days < 0)) {
+      return setError("请选择或填入行权窗口期天数");
+    }
     setBusy(true);
     const res = await fetch(`/api/grants/${grantId}`, {
       method: "PATCH",
@@ -584,7 +596,7 @@ function CloseDialog({
       body: JSON.stringify({
         to: needsWindow ? "CLOSING" : "CLOSED",
         closedReason: reason,
-        ...(needsWindow ? { exerciseWindowDays: Number(days) } : {}),
+        ...(needsWindow ? { exerciseWindowDays: days } : {}),
       }),
     });
     const json = await res.json();
@@ -618,16 +630,7 @@ function CloseDialog({
           {needsWindow && (
             <div className="space-y-1">
               <Label>行权窗口期 *</Label>
-              <NativeSelect
-                value={days}
-                onChange={setDays}
-                options={[
-                  { value: "0", label: "0 天（立即关闭）" },
-                  { value: "30", label: "30 天" },
-                  { value: "90", label: "90 天" },
-                  { value: "365", label: "365 天" },
-                ]}
-              />
+              <WindowDaysPicker value={days} onChange={setDays} />
             </div>
           )}
           {error && <p className="text-sm text-destructive">{error}</p>}
