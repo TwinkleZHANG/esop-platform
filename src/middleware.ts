@@ -83,7 +83,7 @@ function redirectForbidden(req: NextRequest, fallback: string) {
 
 export const config = {
   matcher: [
-    // 排除 Next 静态资源、favicon、NextAuth API
-    "/((?!_next/static|_next/image|favicon.ico|api/auth).*)",
+    // 排除 Next 静态资源、favicon、所有 API（API 路由自行返回 JSON 401/403，不做重定向）
+    "/((?!_next/static|_next/image|favicon.ico|api/).*)",
   ],
 };
