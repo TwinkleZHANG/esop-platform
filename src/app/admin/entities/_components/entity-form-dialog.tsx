@@ -13,13 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 
 export const TYPE_OPTIONS: { value: HoldingEntityType; label: string }[] = [
   { value: "LIMITED_PARTNERSHIP", label: "有限合伙" },
@@ -137,49 +131,33 @@ export function EntityFormDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>持股主体类型 *</Label>
-              <Select
+              <NativeSelect
                 value={form.type}
-                onValueChange={(v) =>
-                  setForm({
-                    ...form,
-                    type:
-                      (v as HoldingEntityType) ?? "LIMITED_PARTNERSHIP",
-                  })
+                onChange={(v) =>
+                  setForm({ ...form, type: v as HoldingEntityType })
                 }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TYPE_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                options={TYPE_OPTIONS.map((o) => ({
+                  value: o.value,
+                  label: o.label,
+                }))}
+              />
             </div>
             <div className="space-y-1">
               <Label>税务属地 *</Label>
-              <Select
+              <NativeSelect
                 value={form.taxJurisdiction}
-                onValueChange={(v) =>
+                onChange={(v) =>
                   setForm({
                     ...form,
-                    taxJurisdiction:
-                      (v as "内地" | "香港" | "海外") ?? "内地",
+                    taxJurisdiction: v as "内地" | "香港" | "海外",
                   })
                 }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="内地">内地</SelectItem>
-                  <SelectItem value="香港">香港</SelectItem>
-                  <SelectItem value="海外">海外</SelectItem>
-                </SelectContent>
-              </Select>
+                options={[
+                  { value: "内地", label: "内地" },
+                  { value: "香港", label: "香港" },
+                  { value: "海外", label: "海外" },
+                ]}
+              />
             </div>
           </div>
 
@@ -248,23 +226,19 @@ export function EntityFormDialog({
           {isEdit && (
             <div className="space-y-1">
               <Label>状态</Label>
-              <Select
+              <NativeSelect
                 value={form.status ?? "ACTIVE"}
-                onValueChange={(v) =>
+                onChange={(v) =>
                   setForm({
                     ...form,
-                    status: (v as "ACTIVE" | "INACTIVE") ?? "ACTIVE",
+                    status: v as "ACTIVE" | "INACTIVE",
                   })
                 }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ACTIVE">启用</SelectItem>
-                  <SelectItem value="INACTIVE">停用</SelectItem>
-                </SelectContent>
-              </Select>
+                options={[
+                  { value: "ACTIVE", label: "启用" },
+                  { value: "INACTIVE", label: "停用" },
+                ]}
+              />
             </div>
           )}
 

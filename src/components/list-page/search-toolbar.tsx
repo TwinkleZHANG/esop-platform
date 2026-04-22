@@ -1,13 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 import type { ReactNode } from "react";
 
 export interface FilterSpec {
@@ -41,22 +35,13 @@ export function SearchToolbar({ search, filters = [], right }: Props) {
         />
       )}
       {filters.map((f) => (
-        <Select
+        <NativeSelect
           key={f.name}
           value={f.value}
-          onValueChange={(v) => f.onChange(v ?? "")}
-        >
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder={f.placeholder} />
-          </SelectTrigger>
-          <SelectContent>
-            {f.options.map((o) => (
-              <SelectItem key={o.value} value={o.value}>
-                {o.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          onChange={f.onChange}
+          options={f.options}
+          className="w-40"
+        />
       ))}
       {right && <div className="ml-auto">{right}</div>}
     </div>

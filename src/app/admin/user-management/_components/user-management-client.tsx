@@ -19,13 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 import { ListPageShell } from "@/components/list-page/list-page-shell";
 import { SearchToolbar } from "@/components/list-page/search-toolbar";
 import { Pagination } from "@/components/list-page/pagination";
@@ -270,21 +264,14 @@ function EditRoleDialog({
             </p>
             <div className="space-y-1">
               <Label>系统角色</Label>
-              <Select
+              <NativeSelect
                 value={role}
-                onValueChange={(v) => setRole((v as UserRole) ?? "EMPLOYEE")}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ROLE_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(v) => setRole(v as UserRole)}
+                options={ROLE_OPTIONS.map((o) => ({
+                  value: o.value,
+                  label: o.label,
+                }))}
+              />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>

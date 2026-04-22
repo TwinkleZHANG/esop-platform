@@ -1,4 +1,8 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { isEmployee } from "@/lib/permissions";
 
 const NAV = [
   { href: "/employee/overview", label: "总览" },
@@ -8,11 +12,16 @@ const NAV = [
   { href: "/employee/tax-events", label: "税务记录" },
 ];
 
-export default function EmployeeLayout({
+export default async function EmployeeLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) redirect("/login");
+  if (session.user.mustChangePassword) redirect("/change-password");
+  if (!isEmployee(session.user.role)) redirect("/admin/dashboard");
+
   return (
     <div className="flex min-h-screen w-full">
       <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-background">

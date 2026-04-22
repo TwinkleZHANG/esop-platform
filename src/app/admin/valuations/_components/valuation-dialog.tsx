@@ -84,7 +84,8 @@ export function ValuationDialog({ open, onOpenChange, onSubmit }: Props) {
             <Label>FMV 公允价值（港币）*</Label>
             <Input
               type="number"
-              step="0.00000001"
+              step="0.01"
+              min="0"
               value={form.fmv}
               onChange={(e) => setForm({ ...form, fmv: e.target.value })}
             />

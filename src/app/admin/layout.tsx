@@ -1,6 +1,7 @@
+import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { isSuperAdmin } from "@/lib/permissions";
+import { isEmployee, isSuperAdmin } from "@/lib/permissions";
 import {
   AdminSidebar,
   type NavItem,
@@ -26,8 +27,12 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // 兜底：中间件通常会拦住未登录请求，这里再守一道防线避免任何场景漏网
   const session = await getServerSession(authOptions);
-  const canSeeSystem = isSuperAdmin(session?.user?.role);
+  if (!session?.user?.id) redirect("/login");
+  if (session.user.mustChangePassword) redirect("/change-password");
+  if (isEmployee(session.user.role)) redirect("/employee/overview");
+  const canSeeSystem = isSuperAdmin(session.user.role);
 
   return (
     <div className="flex min-h-screen w-full">

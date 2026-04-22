@@ -15,7 +15,7 @@ export async function GET(
 
   const v = await prisma.valuation.findUnique({ where: { id: params.id } });
   if (!v) return fail("估值记录不存在", 404);
-  return ok({ ...v, fmv: v.fmv.toString() });
+  return ok({ ...v, fmv: v.fmv.toFixed(2) });
 }
 
 export async function DELETE(

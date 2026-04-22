@@ -35,7 +35,7 @@ export async function GET(req: Request) {
 
   return ok(
     paged(
-      items.map((v) => ({ ...v, fmv: v.fmv.toString() })),
+      items.map((v) => ({ ...v, fmv: v.fmv.toFixed(2) })),
       total,
       pagination
     )
@@ -55,7 +55,8 @@ export async function POST(req: Request) {
   const date = new Date(d.valuationDate);
   if (isNaN(date.getTime())) return fail("估值日期格式错误");
 
-  const fmv = new Prisma.Decimal(d.fmv);
+  // 港币精度：最多 2 位小数，向偶数舍入（ROUND_HALF_EVEN = 6）
+  const fmv = new Prisma.Decimal(d.fmv).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_EVEN);
   if (fmv.lte(0)) return fail("FMV 必须大于 0");
 
   const created = await prisma.valuation.create({
@@ -67,5 +68,5 @@ export async function POST(req: Request) {
     },
   });
 
-  return ok({ ...created, fmv: created.fmv.toString() });
+  return ok({ ...created, fmv: created.fmv.toFixed(2) });
 }

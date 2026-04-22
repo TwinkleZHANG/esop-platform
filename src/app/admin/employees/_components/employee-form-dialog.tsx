@@ -12,13 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 import { JURISDICTION_OPTIONS } from "@/lib/i18n";
 import { EmployerEntityPicker } from "./employer-entity-picker";
 
@@ -169,49 +163,29 @@ export function EmployeeFormDialog({
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label>法律身份 *</Label>
-                  <Select
+                  <NativeSelect
                     value={form.legalIdentity}
-                    onValueChange={(v) =>
-                      setForm({
-                        ...form,
-                        legalIdentity: (v as Jurisdiction) ?? "MAINLAND",
-                      })
+                    onChange={(v) =>
+                      setForm({ ...form, legalIdentity: v as Jurisdiction })
                     }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {JURISDICTION_OPTIONS.map((o) => (
-                        <SelectItem key={o.value} value={o.value}>
-                          {o.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    options={JURISDICTION_OPTIONS.map((o) => ({
+                      value: o.value,
+                      label: o.label,
+                    }))}
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label>税务居住地 *</Label>
-                  <Select
+                  <NativeSelect
                     value={form.taxResidence}
-                    onValueChange={(v) =>
-                      setForm({
-                        ...form,
-                        taxResidence: (v as Jurisdiction) ?? "MAINLAND",
-                      })
+                    onChange={(v) =>
+                      setForm({ ...form, taxResidence: v as Jurisdiction })
                     }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {JURISDICTION_OPTIONS.map((o) => (
-                        <SelectItem key={o.value} value={o.value}>
-                          {o.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    options={JURISDICTION_OPTIONS.map((o) => ({
+                      value: o.value,
+                      label: o.label,
+                    }))}
+                  />
                 </div>
               </div>
 
@@ -228,24 +202,19 @@ export function EmployeeFormDialog({
               {isEdit && (
                 <div className="space-y-1">
                   <Label>雇佣状态</Label>
-                  <Select
+                  <NativeSelect
                     value={form.employmentStatus ?? "在职"}
-                    onValueChange={(v) =>
+                    onChange={(v) =>
                       setForm({
                         ...form,
-                        employmentStatus:
-                          (v as "在职" | "离职") ?? "在职",
+                        employmentStatus: v as "在职" | "离职",
                       })
                     }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="在职">在职</SelectItem>
-                      <SelectItem value="离职">离职</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    options={[
+                      { value: "在职", label: "在职" },
+                      { value: "离职", label: "离职" },
+                    ]}
+                  />
                 </div>
               )}
 

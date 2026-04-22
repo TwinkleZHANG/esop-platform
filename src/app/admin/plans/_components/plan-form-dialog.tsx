@@ -12,13 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 
 const RSU_DELIVERY: { value: "SHARES" | "LP_SHARES" | "OFFSHORE_SPV"; label: string }[] = [
   { value: "SHARES", label: "实股" },
@@ -128,48 +122,39 @@ export function PlanFormDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>激励类型 *</Label>
-              <Select
+              <NativeSelect
                 value={form.type}
-                onValueChange={(v) =>
+                onChange={(v) =>
                   setForm({
                     ...form,
-                    type: (v as "RSU" | "OPTION") ?? "RSU",
+                    type: v as "RSU" | "OPTION",
                     deliveryMethods: [],
                   })
                 }
                 disabled={!canEditType}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="RSU">RSU</SelectItem>
-                  <SelectItem value="OPTION">Option</SelectItem>
-                </SelectContent>
-              </Select>
+                options={[
+                  { value: "RSU", label: "RSU" },
+                  { value: "OPTION", label: "Option" },
+                ]}
+              />
             </div>
 
             <div className="space-y-1">
               <Label>适用法域 *</Label>
-              <Select
+              <NativeSelect
                 value={form.jurisdiction}
-                onValueChange={(v) =>
+                onChange={(v) =>
                   setForm({
                     ...form,
-                    jurisdiction:
-                      (v as "内地" | "香港" | "海外") ?? "内地",
+                    jurisdiction: v as "内地" | "香港" | "海外",
                   })
                 }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="内地">内地</SelectItem>
-                  <SelectItem value="香港">香港</SelectItem>
-                  <SelectItem value="海外">海外</SelectItem>
-                </SelectContent>
-              </Select>
+                options={[
+                  { value: "内地", label: "内地" },
+                  { value: "香港", label: "香港" },
+                  { value: "海外", label: "海外" },
+                ]}
+              />
             </div>
           </div>
 
