@@ -7,7 +7,7 @@ const BUSINESS_NAV = [
   { href: "/admin/dashboard", label: "仪表盘" },
   { href: "/admin/plans", label: "激励计划池" },
   { href: "/admin/employees", label: "员工档案" },
-  { href: "/admin/holding-entities", label: "持股主体库" },
+  { href: "/admin/entities", label: "持股主体库" },
   { href: "/admin/valuations", label: "估值管理" },
   { href: "/admin/grants", label: "授予管理" },
   { href: "/admin/tax-events", label: "税务事件单" },
