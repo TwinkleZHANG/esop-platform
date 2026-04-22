@@ -1300,7 +1300,7 @@ model TaxEvent {
   status             TaxEventStatus    @default(PENDING_PAYMENT)
   receiptFiles       String[]                              // 员工上传的凭证文件路径（最多 3 个）
   employeeNotes      String?                               // 员工添加的备注
-  operationRequestId String?                               // 关联触发此税务事件的申请（RSU 归属税务无关联申请，为 null）
+  operationRequestId String?           @unique             // 关联触发此税务事件的申请（RSU 归属税务无关联申请，为 null）；与 OperationRequest 为 1:1 关系
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 

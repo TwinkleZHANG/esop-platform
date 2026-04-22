@@ -1,0 +1,324 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ========== 用户角色 ==========
+
+enum UserRole {
+  SUPER_ADMIN
+  GRANT_ADMIN
+  APPROVAL_ADMIN
+  EMPLOYEE
+}
+
+enum Jurisdiction {
+  MAINLAND
+  HONGKONG
+  OVERSEAS
+}
+
+// ========== 用户 / 员工 ==========
+
+model User {
+  id                  String    @id @default(cuid())
+  name                String
+  employeeId          String    @unique
+  email               String    @unique // 企业邮箱，同时作为登录账号
+  passwordHash        String?
+  mustChangePassword  Boolean   @default(true)  // 首次登录强制改密码
+  role                UserRole  @default(EMPLOYEE)
+  department          String?
+  legalIdentity       Jurisdiction
+  taxResidence        Jurisdiction
+  employmentStatus    String    @default("在职")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  employerEntities  EmployerEntity[]
+  taxEvents         TaxEvent[]
+  operationRequests  OperationRequest[]
+
+  // 授予数：通过 grants 关联实时计算，不单独存储
+  grants            Grant[]
+
+  @@map("users")
+}
+
+// ========== 用工主体 ==========
+
+model EmployerEntity {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  users     User[]
+
+  @@map("employer_entities")
+}
+
+// ========== 激励计划 ==========
+
+enum PlanType {
+  RSU
+  OPTION
+}
+
+enum PlanStatus {
+  PENDING_APPROVAL
+  APPROVED
+}
+
+model Plan {
+  id                  String      @id @default(cuid())
+  title               String
+  type                PlanType
+  jurisdiction        String
+  deliveryMethod      Json
+  poolSize            Decimal
+  effectiveDate       DateTime
+  boardResolutionId   String?
+  status              PlanStatus  @default(PENDING_APPROVAL)
+  notes               String?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  grants              Grant[]
+
+  @@map("plans")
+}
+
+// ========== 持股主体 ==========
+
+enum HoldingEntityType {
+  LIMITED_PARTNERSHIP
+  DOMESTIC_SUBSIDIARY
+  OFFSHORE_SPV
+  OTHER
+}
+
+enum HoldingEntityStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model HoldingEntity {
+  id              String              @id @default(cuid())
+  name            String
+  entityCode      String              @unique
+  type            HoldingEntityType
+  registrationNo  String
+  address         String?
+  establishedAt   DateTime?
+  legalRep        String?
+  lpAccount       String?
+  taxJurisdiction String
+  status          HoldingEntityStatus @default(ACTIVE)
+  notes           String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  grants          Grant[]
+
+  @@map("holding_entities")
+}
+
+// ========== 估值管理 ==========
+
+model Valuation {
+  id              String   @id @default(cuid())
+  valuationDate   DateTime
+  fmv             Decimal
+  source          String?
+  description     String?
+  createdAt       DateTime @default(now())
+
+  @@map("valuations")
+}
+
+// ========== 授予管理 ==========
+
+enum GrantStatus {
+  DRAFT
+  GRANTED
+  VESTING
+  FULLY_VESTED
+  STILL_EXERCISABLE   // 仅 Option：已全部归属，但还有未行权/未交割的期权
+  ALL_SETTLED
+  CLOSING             // 仅 Option：关闭中，行权窗口期内
+  CLOSED
+}
+
+enum VestingFrequency {
+  MONTHLY
+  YEARLY
+}
+
+model Grant {
+  id                        String       @id @default(cuid())
+  planId                    String
+  userId                    String
+  holdingEntityId           String?
+  grantDate                 DateTime
+  vestingStartDate          DateTime?
+  totalQuantity             Decimal                          // 授予总数量（RSU 为股数，Option 为期权数）
+  strikePrice               Decimal      @default(0)
+  agreementId               String?
+  vestingYears              Int
+  cliffMonths               Int
+  vestingFrequency          VestingFrequency
+  status                    GrantStatus  @default(DRAFT)
+  operableShares            Decimal      @default(0)   // 可操作股数（实股）
+  operableOptions           Decimal      @default(0)   // 可操作期权（仅 Option，RSU 恒为 0）
+  closedReason              String?
+  exerciseWindowDeadline    DateTime?    // 行权窗口截止日（仅 Closing 状态有值）
+  exerciseWindowDays        Int?         // 行权窗口期天数（0/30/90/365）
+  createdAt                 DateTime     @default(now())
+  updatedAt                 DateTime     @updatedAt
+
+  plan                      Plan              @relation(fields: [planId], references: [id])
+  user                      User              @relation(fields: [userId], references: [id])
+  holdingEntity             HoldingEntity?    @relation(fields: [holdingEntityId], references: [id])
+  vestingRecords            VestingRecord[]
+  taxEvents                 TaxEvent[]
+  operationRequests         OperationRequest[]
+  statusLogs                StatusChangeLog[]
+
+  @@map("grants")
+}
+
+// ========== 归属记录 ==========
+
+enum VestingRecordStatus {
+  PENDING
+  VESTED
+  PARTIALLY_SETTLED   // 仅 Option 适用（部分期权已行权完成交割）
+  SETTLED
+  CLOSED
+}
+
+model VestingRecord {
+  id                  String              @id @default(cuid())
+  grantId             String
+  vestingDate         DateTime
+  quantity            Decimal                                // 该期归属总数量（RSU 为股数，Option 为期权数）
+  exercisableOptions  Decimal             @default(0)  // 仅 Option：剩余可行权期权数。Vested 时初始化为 quantity，行权时 FIFO 扣减
+  status              VestingRecordStatus @default(PENDING)
+  actualVestDate      DateTime?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  grant           Grant               @relation(fields: [grantId], references: [id])
+
+  @@map("vesting_records")
+}
+
+// 归属数量计算采用「截断（floor）+余数补入最后一期」策略，确保所有归属记录数量之和恰好等于 totalQuantity
+// RSU 归属记录无需跟踪行权进度，因为 RSU 在 Vested 后直接触发税务事件并一次性 Settled。
+// Option 归属记录通过 exercisableOptions 字段跟踪剩余可行权期权数：Pending → Vested 时初始化为此次归属涉及的总期权数（即 quantity），每次 FIFO 行权扣减，减至 0 时状态变为 Settled。该字段同时作为状态判断依据：exercisableOptions > 0 为 Partially Settled，== 0 为 Settled。
+// Post-settlement 操作（转让/售出/回购/兑现）不影响归属记录，仅通过 Grant 层的 operableShares / operableOptions 体现。
+
+// ========== 税务事件 ==========
+
+enum TaxEventType {
+  VESTING_TAX
+  EXERCISE_TAX
+  POST_SETTLEMENT_TAX
+}
+
+enum TaxEventStatus {
+  PENDING_PAYMENT
+  RECEIPT_UPLOADED
+  CONFIRMED
+}
+
+enum OperationTarget {
+  SHARES     // 实股
+  OPTIONS    // 期权
+}
+
+model TaxEvent {
+  id                 String            @id @default(cuid())
+  grantId            String
+  userId             String
+  eventType          TaxEventType
+  operationType      String                                // 归属/行权/转让/售出/回购/兑现
+  operationTarget    OperationTarget?                      // 实股/期权（仅 Option post-settlement 需要）
+  quantity           Decimal                               // 本次操作的数量
+  eventDate          DateTime
+  fmvAtEvent         Decimal
+  strikePrice        Decimal           @default(0)
+  status             TaxEventStatus    @default(PENDING_PAYMENT)
+  receiptFiles       String[]                              // 员工上传的凭证文件路径（最多 3 个）
+  employeeNotes      String?                               // 员工添加的备注
+  operationRequestId String?           @unique             // 关联触发此税务事件的申请（RSU 归属税务无关联申请，为 null）；1:1 关系
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  grant              Grant             @relation(fields: [grantId], references: [id])
+  user               User              @relation(fields: [userId], references: [id])
+  operationRequest   OperationRequest?  @relation(fields: [operationRequestId], references: [id])
+
+  @@map("tax_events")
+}
+
+// ========== 申请记录 ==========
+
+enum OperationRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CLOSED       // 员工离职时，待审批的申请自动关闭
+}
+
+enum OperationRequestType {
+  EXERCISE        // 行权（仅 Option）
+  TRANSFER        // 转让
+  SELL            // 售出（仅针对实股）
+  BUYBACK         // 回购
+  REDEEM          // 兑现
+}
+
+model OperationRequest {
+  id              String                  @id @default(cuid())
+  grantId         String
+  userId          String
+  requestType     OperationRequestType
+  requestTarget   OperationTarget?                        // 实股/期权（仅 Option 的 post-settlement 申请需要）
+  quantity        Decimal                                 // 申请数量
+  status          OperationRequestStatus   @default(PENDING)
+  submitDate      DateTime                @default(now())
+  approveDate     DateTime?
+  approverNotes   String?                                 // 审批备注（通过或驳回原因）
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  grant           Grant                   @relation(fields: [grantId], references: [id])
+  user            User                    @relation(fields: [userId], references: [id])
+  taxEvent        TaxEvent?                               // 审批通过后系统自动生成的税务事件
+
+  @@map("operation_requests")
+}
+
+// ========== 状态变更日志 ==========
+
+model StatusChangeLog {
+  id              String   @id @default(cuid())
+  grantId         String
+  fromStatus      String
+  toStatus        String
+  operatorName    String
+  legalDocument   String?
+  timestamp       DateTime @default(now())   // 存储 UTC，展示时转换为 UTC+8
+
+  grant           Grant    @relation(fields: [grantId], references: [id])
+
+  @@index([grantId, timestamp])
+  @@map("status_change_logs")
+}
