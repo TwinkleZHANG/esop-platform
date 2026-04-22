@@ -69,9 +69,9 @@ export async function GET(req: Request) {
     const g = granted[p.id] ?? new Prisma.Decimal(0);
     return {
       ...p,
-      poolSize: p.poolSize.toString(),
-      grantedQuantity: g.toString(),
-      remainingQuantity: new Prisma.Decimal(p.poolSize).sub(g).toString(),
+      poolSize: p.poolSize.toFixed(0),
+      grantedQuantity: g.toFixed(0),
+      remainingQuantity: new Prisma.Decimal(p.poolSize).sub(g).toFixed(0),
     };
   });
 
@@ -96,13 +96,20 @@ export async function POST(req: Request) {
   const effectiveDate = new Date(d.effectiveDate);
   if (isNaN(effectiveDate.getTime())) return fail("生效日期格式错误");
 
+  // 激励池规模为整数股数，强制 0 位小数
+  const poolSize = new Prisma.Decimal(d.poolSize).toDecimalPlaces(
+    0,
+    Prisma.Decimal.ROUND_DOWN
+  );
+  if (poolSize.lte(0)) return fail("激励池规模必须为大于 0 的整数");
+
   const plan = await prisma.plan.create({
     data: {
       title: d.title,
       type: d.type as PlanType,
       jurisdiction: d.jurisdiction,
       deliveryMethod,
-      poolSize: new Prisma.Decimal(d.poolSize),
+      poolSize,
       effectiveDate,
       boardResolutionId: d.boardResolutionId || null,
       notes: d.notes || null,
@@ -110,5 +117,5 @@ export async function POST(req: Request) {
     },
   });
 
-  return ok({ ...plan, poolSize: plan.poolSize.toString() });
+  return ok({ ...plan, poolSize: plan.poolSize.toFixed(0) });
 }

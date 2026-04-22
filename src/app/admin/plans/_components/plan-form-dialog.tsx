@@ -83,8 +83,12 @@ export function PlanFormDialog({
   async function handleSubmit() {
     setError(null);
     if (!form.title.trim()) return setError("计划标题必填");
-    if (!form.poolSize || Number(form.poolSize) <= 0)
-      return setError("激励池规模必须大于 0");
+    if (
+      !form.poolSize ||
+      !Number.isInteger(Number(form.poolSize)) ||
+      Number(form.poolSize) <= 0
+    )
+      return setError("激励池规模必须为大于 0 的整数");
     if (form.type === "RSU" && form.deliveryMethods.length === 0)
       return setError("RSU 必须选择至少一种交割方式");
 
@@ -188,7 +192,8 @@ export function PlanFormDialog({
               <Label>激励池规模 *</Label>
               <Input
                 type="number"
-                step="0.00000001"
+                step="1"
+                min="1"
                 value={form.poolSize}
                 onChange={(e) =>
                   setForm({ ...form, poolSize: e.target.value })

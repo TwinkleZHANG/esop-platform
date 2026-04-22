@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import type { Jurisdiction } from "@prisma/client";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,9 @@ export function EmployeesClient() {
   const role = session?.user?.role;
   const canCreate = hasPermission(role, "employee.create");
 
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>("ALL");
   const [page, setPage] = useState(1);
@@ -73,6 +77,13 @@ export function EmployeesClient() {
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch, status]);
+
+  useEffect(() => {
+    if (searchParams.get("action") === "create" && canCreate) {
+      setDialogOpen(true);
+      router.replace("/admin/employees");
+    }
+  }, [searchParams, canCreate, router]);
 
   async function createEmployee(v: EmployeeFormValue): Promise<string | void> {
     const res = await fetch("/api/employees", {

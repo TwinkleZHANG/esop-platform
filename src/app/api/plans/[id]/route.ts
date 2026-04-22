@@ -35,11 +35,11 @@ export async function GET(
 
   return ok({
     ...plan,
-    poolSize: plan.poolSize.toString(),
-    grantedQuantity: grantedQty.toString(),
+    poolSize: plan.poolSize.toFixed(0),
+    grantedQuantity: grantedQty.toFixed(0),
     remainingQuantity: new Prisma.Decimal(plan.poolSize)
       .sub(grantedQty)
-      .toString(),
+      .toFixed(0),
   });
 }
 
@@ -67,8 +67,14 @@ export async function PUT(
   const data: Prisma.PlanUpdateInput = {};
   if (d.title !== undefined) data.title = d.title;
   if (d.jurisdiction !== undefined) data.jurisdiction = d.jurisdiction;
-  if (d.poolSize !== undefined)
-    data.poolSize = new Prisma.Decimal(d.poolSize);
+  if (d.poolSize !== undefined) {
+    const ps = new Prisma.Decimal(d.poolSize).toDecimalPlaces(
+      0,
+      Prisma.Decimal.ROUND_DOWN
+    );
+    if (ps.lte(0)) return fail("激励池规模必须为大于 0 的整数");
+    data.poolSize = ps;
+  }
   if (d.effectiveDate !== undefined) {
     const dt = new Date(d.effectiveDate);
     if (isNaN(dt.getTime())) return fail("生效日期格式错误");
@@ -92,7 +98,7 @@ export async function PUT(
     data,
   });
 
-  return ok({ ...updated, poolSize: updated.poolSize.toString() });
+  return ok({ ...updated, poolSize: updated.poolSize.toFixed(0) });
 }
 
 export async function PATCH(
@@ -114,5 +120,5 @@ export async function PATCH(
     data: { status: PlanStatus.APPROVED },
   });
 
-  return ok({ ...updated, poolSize: updated.poolSize.toString() });
+  return ok({ ...updated, poolSize: updated.poolSize.toFixed(0) });
 }

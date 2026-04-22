@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +37,9 @@ export function PlansClient() {
   const role = session?.user?.role;
   const canCreate = hasPermission(role, "plan.create");
 
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [search, setSearch] = useState("");
   const [type, setType] = useState<string>("ALL");
   const [page, setPage] = useState(1);
@@ -68,6 +72,14 @@ export function PlansClient() {
   useEffect(() => {
     setPage(1);
   }, [debouncedSearch, type]);
+
+  // Dashboard 快捷操作：?action=create 自动打开创建弹窗
+  useEffect(() => {
+    if (searchParams.get("action") === "create" && canCreate) {
+      setDialogOpen(true);
+      router.replace("/admin/plans");
+    }
+  }, [searchParams, canCreate, router]);
 
   const createPlan = async (v: PlanFormValue) => {
     const res = await fetch("/api/plans", {

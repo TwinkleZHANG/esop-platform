@@ -63,13 +63,13 @@ export function DashboardClient() {
       <div className="rounded-lg border border-border bg-background p-6">
         <h2 className="mb-3 text-sm font-semibold">快捷操作</h2>
         <div className="flex gap-3">
-          <Link href="/admin/plans">
+          <Link href="/admin/plans?action=create">
             <Button variant="outline">+ 创建计划</Button>
           </Link>
-          <Link href="/admin/employees">
+          <Link href="/admin/employees?action=create">
             <Button variant="outline">+ 添加员工</Button>
           </Link>
-          <Link href="/admin/grants">
+          <Link href="/admin/grants?action=create">
             <Button variant="outline">+ 创建授予</Button>
           </Link>
         </div>
