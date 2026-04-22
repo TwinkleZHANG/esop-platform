@@ -70,6 +70,8 @@ export function EmployeeDetailClient({ userId }: { userId: string }) {
         taxResidence: v.taxResidence,
         employerEntityIds: v.employerEntityIds,
         employmentStatus: v.employmentStatus,
+        offboardReason: v.offboardReason,
+        exerciseWindowDays: v.exerciseWindowDays,
       }),
     });
     const json = await res.json();

@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
+import { Textarea } from "@/components/ui/textarea";
 import { JURISDICTION_OPTIONS } from "@/lib/i18n";
 import { EmployerEntityPicker } from "./employer-entity-picker";
 
@@ -25,6 +26,9 @@ export interface EmployeeFormValue {
   taxResidence: Jurisdiction;
   employerEntityIds: string[];
   employmentStatus?: "在职" | "离职";
+  // 从在职切到离职时必填，编辑模式以外忽略
+  offboardReason?: string;
+  exerciseWindowDays?: 0 | 30 | 90 | 365;
 }
 
 const DEFAULT_VALUE: EmployeeFormValue = {
@@ -67,6 +71,11 @@ export function EmployeeFormDialog({
     }
   }, [open, initialValue]);
 
+  const isOffboardingNow =
+    mode === "edit" &&
+    form.employmentStatus === "离职" &&
+    initialValue?.employmentStatus === "在职";
+
   async function handleSubmit() {
     setError(null);
     if (!form.name.trim()) return setError("员工姓名必填");
@@ -74,6 +83,12 @@ export function EmployeeFormDialog({
       return setError("员工 ID 必填");
     if (mode === "create" && !form.email.trim())
       return setError("邮箱必填");
+    if (isOffboardingNow) {
+      if (!form.offboardReason || !form.offboardReason.trim())
+        return setError("设为离职需填写关闭原因");
+      if (form.exerciseWindowDays === undefined)
+        return setError("设为离职需选择行权窗口期");
+    }
 
     setSubmitting(true);
     try {
@@ -215,6 +230,47 @@ export function EmployeeFormDialog({
                       { value: "离职", label: "离职" },
                     ]}
                   />
+                </div>
+              )}
+
+              {isOffboardingNow && (
+                <div className="space-y-3 rounded-md border border-destructive/30 bg-destructive/5 p-3">
+                  <p className="text-xs text-destructive">
+                    设为离职会触发：所有待审批申请关闭、RSU 非 All Settled 的 Grant → Closed、Option 根据可操作期权进入 Closing 或 Closed。
+                  </p>
+                  <div className="space-y-1">
+                    <Label>关闭原因 *</Label>
+                    <Textarea
+                      rows={3}
+                      value={form.offboardReason ?? ""}
+                      onChange={(e) =>
+                        setForm({ ...form, offboardReason: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>行权窗口期 *（仅 Option 可操作期权 &gt; 0 的 Grant 使用）</Label>
+                    <NativeSelect
+                      value={
+                        form.exerciseWindowDays !== undefined
+                          ? String(form.exerciseWindowDays)
+                          : ""
+                      }
+                      onChange={(v) =>
+                        setForm({
+                          ...form,
+                          exerciseWindowDays: Number(v) as 0 | 30 | 90 | 365,
+                        })
+                      }
+                      options={[
+                        { value: "", label: "请选择" },
+                        { value: "0", label: "0 天（立即关闭）" },
+                        { value: "30", label: "30 天" },
+                        { value: "90", label: "90 天" },
+                        { value: "365", label: "365 天" },
+                      ]}
+                    />
+                  </div>
                 </div>
               )}
 
