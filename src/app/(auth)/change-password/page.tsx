@@ -42,8 +42,12 @@ export default function ChangePasswordPage() {
       return;
     }
 
-    await update();
-    router.push("/");
+    await update({ mustChangePassword: false });
+    const target =
+      session?.user.role === "EMPLOYEE"
+        ? "/employee/overview"
+        : "/admin/dashboard";
+    router.push(target);
     router.refresh();
   }
 
