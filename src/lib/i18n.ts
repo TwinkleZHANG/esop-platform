@@ -1,4 +1,9 @@
-import { GrantStatus, Jurisdiction } from "@prisma/client";
+import {
+  GrantStatus,
+  Jurisdiction,
+  TaxEventStatus,
+  TaxEventType,
+} from "@prisma/client";
 import type { StatusTone } from "@/components/status-badge";
 
 export const JURISDICTION_LABEL: Record<Jurisdiction, string> = {
@@ -41,4 +46,29 @@ export const GRANT_STATUS_OPTIONS: { value: string; label: string }[] = [
   ...(Object.entries(GRANT_STATUS_LABEL) as [GrantStatus, string][]).map(
     ([v, l]) => ({ value: v, label: l })
   ),
+];
+
+export const TAX_EVENT_TYPE_LABEL: Record<TaxEventType, string> = {
+  VESTING_TAX: "归属税务",
+  EXERCISE_TAX: "行权税务",
+  POST_SETTLEMENT_TAX: "归属后税务",
+};
+
+export const TAX_EVENT_STATUS_LABEL: Record<TaxEventStatus, string> = {
+  PENDING_PAYMENT: "待缴款",
+  RECEIPT_UPLOADED: "已上传凭证",
+  CONFIRMED: "已确定",
+};
+
+export const TAX_EVENT_STATUS_TONE: Record<TaxEventStatus, StatusTone> = {
+  PENDING_PAYMENT: "warn",
+  RECEIPT_UPLOADED: "info",
+  CONFIRMED: "success",
+};
+
+export const TAX_EVENT_STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: "ALL", label: "全部" },
+  ...(
+    Object.entries(TAX_EVENT_STATUS_LABEL) as [TaxEventStatus, string][]
+  ).map(([v, l]) => ({ value: v, label: l })),
 ];
