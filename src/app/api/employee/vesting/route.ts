@@ -10,6 +10,7 @@ import {
   isErrorResponse,
   ok,
   paged,
+  parseDateRange,
   parsePagination,
   requireSession,
 } from "@/lib/api-utils";
@@ -50,6 +51,8 @@ export async function GET(req: Request) {
       },
     };
   }
+  const range = parseDateRange(url.searchParams);
+  if (range.gte || range.lte) where.vestingDate = range;
 
   const [items, total] = await Promise.all([
     prisma.vestingRecord.findMany({

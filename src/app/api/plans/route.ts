@@ -6,6 +6,7 @@ import {
   isErrorResponse,
   ok,
   paged,
+  parseDateRange,
   parsePagination,
   requirePermission,
 } from "@/lib/api-utils";
@@ -50,6 +51,8 @@ export async function GET(req: Request) {
       { id: { contains: search } },
     ];
   }
+  const range = parseDateRange(url.searchParams);
+  if (range.gte || range.lte) where.createdAt = range;
 
   const [items, total] = await Promise.all([
     prisma.plan.findMany({

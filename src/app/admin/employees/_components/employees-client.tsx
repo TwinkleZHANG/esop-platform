@@ -47,6 +47,8 @@ export function EmployeesClient() {
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>("ALL");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebouncedValue(search, 300);
 
@@ -54,7 +56,7 @@ export function EmployeesClient() {
     items: EmployeeRow[];
     total: number;
     pageSize: number;
-  }>({ items: [], total: 0, pageSize: 20 });
+  }>({ items: [], total: 0, pageSize: 10 });
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -63,12 +65,14 @@ export function EmployeesClient() {
     const qs = new URLSearchParams();
     if (debouncedSearch) qs.set("search", debouncedSearch);
     if (status && status !== "ALL") qs.set("status", status);
+    if (from) qs.set("from", from);
+    if (to) qs.set("to", to);
     qs.set("page", String(page));
     const res = await fetch(`/api/employees?${qs.toString()}`);
     const json = await res.json();
     if (json.success) setData(json.data);
     setLoading(false);
-  }, [debouncedSearch, status, page]);
+  }, [debouncedSearch, status, from, to, page]);
 
   useEffect(() => {
     void load();
@@ -76,7 +80,7 @@ export function EmployeesClient() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, status]);
+  }, [debouncedSearch, status, from, to]);
 
   useEffect(() => {
     if (searchParams.get("action") === "create" && canCreate) {
@@ -120,6 +124,15 @@ export function EmployeesClient() {
               value: search,
               onChange: setSearch,
               placeholder: "按姓名或员工 ID 搜索",
+            }}
+            dateRange={{
+              from,
+              to,
+              onChange: (f, t) => {
+                setFrom(f);
+                setTo(t);
+              },
+              label: "创建日期",
             }}
             filters={[
               {

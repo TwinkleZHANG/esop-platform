@@ -1,4 +1,4 @@
-import { GrantStatus, UserRole } from "@prisma/client";
+import { GrantStatus, TaxEventStatus, UserRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isErrorResponse, ok, requireSession } from "@/lib/api-utils";
 
@@ -8,10 +8,14 @@ export async function GET() {
 
   // 员工自己查自己的数据（管理员角色访问返回空）
   if (session.user.role !== UserRole.EMPLOYEE) {
-    return ok({ offboarded: false, closingGrants: [] });
+    return ok({
+      offboarded: false,
+      closingGrants: [],
+      pendingPaymentCount: 0,
+    });
   }
 
-  const [user, closing] = await Promise.all([
+  const [user, closing, pendingPaymentCount] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: { employmentStatus: true },
@@ -28,6 +32,12 @@ export async function GET() {
         plan: { select: { title: true } },
       },
       orderBy: { exerciseWindowDeadline: "asc" },
+    }),
+    prisma.taxEvent.count({
+      where: {
+        userId: session.user.id,
+        status: TaxEventStatus.PENDING_PAYMENT,
+      },
     }),
   ]);
 
@@ -52,5 +62,6 @@ export async function GET() {
   return ok({
     offboarded: user?.employmentStatus === "离职",
     closingGrants: grants,
+    pendingPaymentCount,
   });
 }

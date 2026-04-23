@@ -71,6 +71,8 @@ interface Row {
 export function EmployeeRequestsClient() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("ALL");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebouncedValue(search, 300);
 
@@ -78,7 +80,7 @@ export function EmployeeRequestsClient() {
     items: Row[];
     total: number;
     pageSize: number;
-  }>({ items: [], total: 0, pageSize: 20 });
+  }>({ items: [], total: 0, pageSize: 10 });
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
@@ -86,12 +88,14 @@ export function EmployeeRequestsClient() {
     const qs = new URLSearchParams();
     if (debouncedSearch) qs.set("search", debouncedSearch);
     if (status && status !== "ALL") qs.set("status", status);
+    if (from) qs.set("from", from);
+    if (to) qs.set("to", to);
     qs.set("page", String(page));
     const res = await fetch(`/api/employee/requests?${qs.toString()}`);
     const json = await res.json();
     if (json.success) setData(json.data);
     setLoading(false);
-  }, [debouncedSearch, status, page]);
+  }, [debouncedSearch, status, from, to, page]);
 
   useEffect(() => {
     void load();
@@ -99,7 +103,7 @@ export function EmployeeRequestsClient() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, status]);
+  }, [debouncedSearch, status, from, to]);
 
   return (
     <ListPageShell
@@ -110,6 +114,15 @@ export function EmployeeRequestsClient() {
             value: search,
             onChange: setSearch,
             placeholder: "按计划标题 / ID 搜索",
+          }}
+          dateRange={{
+            from,
+            to,
+            onChange: (f, t) => {
+              setFrom(f);
+              setTo(t);
+            },
+            label: "申请时间",
           }}
           filters={[
             {

@@ -5,6 +5,7 @@ import {
   isErrorResponse,
   ok,
   paged,
+  parseDateRange,
   parsePagination,
   requireSession,
 } from "@/lib/api-utils";
@@ -32,6 +33,8 @@ export async function GET(req: Request) {
       { plan: { id: { contains: search, mode: "insensitive" } } },
     ];
   }
+  const range = parseDateRange(url.searchParams);
+  if (range.gte || range.lte) where.grantDate = range;
 
   const [items, total] = await Promise.all([
     prisma.grant.findMany({

@@ -12,6 +12,7 @@ import {
   isErrorResponse,
   ok,
   paged,
+  parseDateRange,
   parsePagination,
   requirePermission,
 } from "@/lib/api-utils";
@@ -56,6 +57,8 @@ export async function GET(req: Request) {
   if (hasPending) {
     where.operationRequests = { some: { status: "PENDING" } };
   }
+  const range = parseDateRange(url.searchParams);
+  if (range.gte || range.lte) where.grantDate = range;
 
   const [items, total] = await Promise.all([
     prisma.grant.findMany({

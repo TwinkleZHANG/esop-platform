@@ -16,12 +16,24 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const NAV: { href: string; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+type BadgeKey = "pendingPaymentCount";
+
+const NAV: {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  badgeKey?: BadgeKey;
+}[] = [
   { href: "/employee/overview", label: "总览", icon: GaugeIcon },
   { href: "/employee/grants", label: "授予记录", icon: ClipboardListIcon },
   { href: "/employee/vesting", label: "归属详情", icon: CalendarCheckIcon },
   { href: "/employee/requests", label: "申请记录", icon: FileSignatureIcon },
-  { href: "/employee/tax-records", label: "税务记录", icon: ReceiptIcon },
+  {
+    href: "/employee/tax-records",
+    label: "税务记录",
+    icon: ReceiptIcon,
+    badgeKey: "pendingPaymentCount",
+  },
 ];
 
 interface ClosingGrant {
@@ -35,6 +47,7 @@ interface ClosingGrant {
 interface Alerts {
   offboarded: boolean;
   closingGrants: ClosingGrant[];
+  pendingPaymentCount: number;
 }
 
 interface Props {
@@ -85,20 +98,31 @@ export function EmployeeShell({ userName, children }: Props) {
 
         <nav className="flex-1 overflow-y-auto p-2">
           <ul className="space-y-1">
-            {NAV.map(({ href, label, icon: Icon }) => {
+            {NAV.map(({ href, label, icon: Icon, badgeKey }) => {
               const active = pathname === href || pathname.startsWith(href + "/");
+              const count = badgeKey && alerts ? alerts[badgeKey] : 0;
               return (
                 <li key={href}>
                   <Link
                     href={href}
                     title={collapsed ? label : undefined}
                     className={cn(
-                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-muted",
+                      "relative flex items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-muted",
                       active && "bg-muted font-medium"
                     )}
                   >
                     <Icon className="size-4 shrink-0" />
-                    {!collapsed && <span>{label}</span>}
+                    {!collapsed && <span className="flex-1">{label}</span>}
+                    {count > 0 && (
+                      <span
+                        className={cn(
+                          "inline-flex min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[10px] font-semibold leading-5 text-white",
+                          collapsed && "absolute right-1 top-1 px-1"
+                        )}
+                      >
+                        {count > 99 ? "99+" : count}
+                      </span>
+                    )}
                   </Link>
                 </li>
               );

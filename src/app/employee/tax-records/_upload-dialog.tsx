@@ -99,7 +99,7 @@ export function UploadDialog({ target, onClose, onUploaded }: Props) {
               {target.planTitle} · {target.operationType}
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-2">
               <Label>凭证文件 *（JPG/PNG/PDF，单文件 ≤10MB，最多 3 个）</Label>
               <input
                 ref={inputRef}
@@ -107,10 +107,17 @@ export function UploadDialog({ target, onClose, onUploaded }: Props) {
                 accept={ACCEPT}
                 multiple
                 onChange={(e) => onPick(e.target.files)}
-                className="block w-full text-sm"
+                className="hidden"
               />
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                className="inline-flex items-center rounded-md border border-border bg-muted px-4 py-2 text-sm font-medium hover:bg-muted/70"
+              >
+                {files.length > 0 ? "重新选取文件" : "选取文件"}
+              </button>
               {files.length > 0 && (
-                <ul className="mt-1 text-xs text-muted-foreground">
+                <ul className="text-xs text-muted-foreground">
                   {files.map((f) => (
                     <li key={f.name}>
                       {f.name} · {(f.size / 1024).toFixed(0)} KB

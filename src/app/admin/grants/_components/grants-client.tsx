@@ -59,18 +59,20 @@ export function GrantsClient() {
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("ALL");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebouncedValue(search, 300);
 
   const [data, setData] = useState<Paged>({
     items: [],
     total: 0,
-    pageSize: 20,
+    pageSize: 10,
   });
   const [pending, setPending] = useState<Paged>({
     items: [],
     total: 0,
-    pageSize: 5,
+    pageSize: 3,
   });
   const [pendingPage, setPendingPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -81,17 +83,19 @@ export function GrantsClient() {
     const qs = new URLSearchParams();
     if (debouncedSearch) qs.set("search", debouncedSearch);
     if (status && status !== "ALL") qs.set("status", status);
+    if (from) qs.set("from", from);
+    if (to) qs.set("to", to);
     qs.set("page", String(page));
     const res = await fetch(`/api/grants?${qs.toString()}`);
     const json = await res.json();
     if (json.success) setData(json.data);
     setLoading(false);
-  }, [debouncedSearch, status, page]);
+  }, [debouncedSearch, status, from, to, page]);
 
   const loadPending = useCallback(async () => {
     const qs = new URLSearchParams({
       hasPending: "1",
-      pageSize: "5",
+      pageSize: "3",
       page: String(pendingPage),
     });
     const res = await fetch(`/api/grants?${qs.toString()}`);
@@ -109,7 +113,7 @@ export function GrantsClient() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, status]);
+  }, [debouncedSearch, status, from, to]);
 
   useEffect(() => {
     if (searchParams.get("action") === "create" && canCreate) {
@@ -156,6 +160,15 @@ export function GrantsClient() {
               value: search,
               onChange: setSearch,
               placeholder: "按计划标题/ID/员工姓名搜索",
+            }}
+            dateRange={{
+              from,
+              to,
+              onChange: (f, t) => {
+                setFrom(f);
+                setTo(t);
+              },
+              label: "授予日期",
             }}
             filters={[
               {

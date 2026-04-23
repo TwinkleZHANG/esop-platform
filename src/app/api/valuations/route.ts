@@ -6,6 +6,7 @@ import {
   isErrorResponse,
   ok,
   paged,
+  parseDateRange,
   parsePagination,
   requirePermission,
 } from "@/lib/api-utils";
@@ -23,14 +24,18 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const pagination = parsePagination(url.searchParams);
+  const range = parseDateRange(url.searchParams);
+  const where: Prisma.ValuationWhereInput = {};
+  if (range.gte || range.lte) where.valuationDate = range;
 
   const [items, total] = await Promise.all([
     prisma.valuation.findMany({
+      where,
       orderBy: { valuationDate: "desc" },
       skip: pagination.skip,
       take: pagination.take,
     }),
-    prisma.valuation.count(),
+    prisma.valuation.count({ where }),
   ]);
 
   return ok(

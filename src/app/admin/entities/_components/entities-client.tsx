@@ -35,6 +35,8 @@ export function EntitiesClient() {
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<string>("ALL");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebouncedValue(search, 300);
 
@@ -42,7 +44,7 @@ export function EntitiesClient() {
     items: HoldingEntity[];
     total: number;
     pageSize: number;
-  }>({ items: [], total: 0, pageSize: 20 });
+  }>({ items: [], total: 0, pageSize: 10 });
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<HoldingEntity | null>(null);
@@ -52,12 +54,14 @@ export function EntitiesClient() {
     const qs = new URLSearchParams();
     if (debouncedSearch) qs.set("search", debouncedSearch);
     if (status && status !== "ALL") qs.set("status", status);
+    if (from) qs.set("from", from);
+    if (to) qs.set("to", to);
     qs.set("page", String(page));
     const res = await fetch(`/api/entities?${qs.toString()}`);
     const json = await res.json();
     if (json.success) setData(json.data);
     setLoading(false);
-  }, [debouncedSearch, status, page]);
+  }, [debouncedSearch, status, from, to, page]);
 
   useEffect(() => {
     void load();
@@ -65,7 +69,7 @@ export function EntitiesClient() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, status]);
+  }, [debouncedSearch, status, from, to]);
 
   async function createEntity(v: EntityFormValue) {
     const res = await fetch("/api/entities", {
@@ -147,6 +151,15 @@ export function EntitiesClient() {
               value: search,
               onChange: setSearch,
               placeholder: "按名称或 ID 搜索",
+            }}
+            dateRange={{
+              from,
+              to,
+              onChange: (f, t) => {
+                setFrom(f);
+                setTo(t);
+              },
+              label: "创建日期",
             }}
             filters={[
               {

@@ -2,6 +2,7 @@
 
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
+import { DateRangeFilter } from "./date-range-filter";
 import type { ReactNode } from "react";
 
 export interface FilterSpec {
@@ -12,6 +13,13 @@ export interface FilterSpec {
   options: { value: string; label: string }[];
 }
 
+export interface DateRangeSpec {
+  from: string;
+  to: string;
+  onChange: (from: string, to: string) => void;
+  label?: string;
+}
+
 interface Props {
   search?: {
     value: string;
@@ -19,10 +27,16 @@ interface Props {
     placeholder: string;
   };
   filters?: FilterSpec[];
+  dateRange?: DateRangeSpec;
   right?: ReactNode;
 }
 
-export function SearchToolbar({ search, filters = [], right }: Props) {
+export function SearchToolbar({
+  search,
+  filters = [],
+  dateRange,
+  right,
+}: Props) {
   return (
     <div className="flex flex-wrap items-center gap-3">
       {search && (
@@ -43,6 +57,14 @@ export function SearchToolbar({ search, filters = [], right }: Props) {
           className="w-40"
         />
       ))}
+      {dateRange && (
+        <DateRangeFilter
+          from={dateRange.from}
+          to={dateRange.to}
+          onChange={dateRange.onChange}
+          label={dateRange.label}
+        />
+      )}
       {right && <div className="ml-auto">{right}</div>}
     </div>
   );

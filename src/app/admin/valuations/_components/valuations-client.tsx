@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { ListPageShell } from "@/components/list-page/list-page-shell";
 import { Pagination } from "@/components/list-page/pagination";
+import { SearchToolbar } from "@/components/list-page/search-toolbar";
 import { hasPermission } from "@/lib/permissions";
 import {
   ValuationDialog,
@@ -32,12 +33,14 @@ export function ValuationsClient() {
   const role = session?.user?.role;
   const canManage = hasPermission(role, "valuation.create");
 
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<{
     items: Row[];
     total: number;
     pageSize: number;
-  }>({ items: [], total: 0, pageSize: 20 });
+  }>({ items: [], total: 0, pageSize: 10 });
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -45,8 +48,12 @@ export function ValuationsClient() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    const qs = new URLSearchParams();
+    qs.set("page", String(page));
+    if (from) qs.set("from", from);
+    if (to) qs.set("to", to);
     const [listRes, badgesRes] = await Promise.all([
-      fetch(`/api/valuations?page=${page}`),
+      fetch(`/api/valuations?${qs.toString()}`),
       fetch(`/api/sidebar-badges`),
     ]);
     const listJson = await listRes.json();
@@ -54,11 +61,15 @@ export function ValuationsClient() {
     const badgesJson = await badgesRes.json();
     if (badgesJson.success) setHasGap(badgesJson.data.valuations > 0);
     setLoading(false);
-  }, [page]);
+  }, [page, from, to]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [from, to]);
 
   async function createValuation(v: ValuationFormValue) {
     const res = await fetch("/api/valuations", {
@@ -105,6 +116,19 @@ export function ValuationsClient() {
               + 添加估值记录
             </Button>
           )
+        }
+        toolbar={
+          <SearchToolbar
+            dateRange={{
+              from,
+              to,
+              onChange: (f, t) => {
+                setFrom(f);
+                setTo(t);
+              },
+              label: "估值日期",
+            }}
+          />
         }
         pagination={
           <Pagination

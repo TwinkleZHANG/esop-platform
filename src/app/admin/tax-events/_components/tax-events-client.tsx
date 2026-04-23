@@ -65,7 +65,13 @@ export function TaxEventsClient() {
     items: Row[];
     total: number;
     pageSize: number;
-  }>({ items: [], total: 0, pageSize: 20 });
+  }>({ items: [], total: 0, pageSize: 10 });
+  const [pendingPage, setPendingPage] = useState(1);
+  const [pending, setPending] = useState<{
+    items: Row[];
+    total: number;
+    pageSize: number;
+  }>({ items: [], total: 0, pageSize: 3 });
   const [loading, setLoading] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
 
@@ -83,9 +89,24 @@ export function TaxEventsClient() {
     setLoading(false);
   }, [debouncedSearch, status, from, to, page]);
 
+  const loadPending = useCallback(async () => {
+    const qs = new URLSearchParams({
+      status: "RECEIPT_UPLOADED",
+      pageSize: "3",
+      page: String(pendingPage),
+    });
+    const res = await fetch(`/api/tax-events?${qs.toString()}`);
+    const json = await res.json();
+    if (json.success) setPending(json.data);
+  }, [pendingPage]);
+
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    void loadPending();
+  }, [loadPending]);
 
   useEffect(() => {
     setPage(1);
@@ -112,40 +133,31 @@ export function TaxEventsClient() {
           )
         }
         toolbar={
-          <div className="flex flex-wrap items-center gap-3">
-            <SearchToolbar
-              search={{
-                value: search,
-                onChange: setSearch,
-                placeholder: "按员工姓名或 ID 搜索",
-              }}
-              filters={[
-                {
-                  name: "status",
-                  placeholder: "税务状态",
-                  value: status,
-                  onChange: setStatus,
-                  options: TAX_EVENT_STATUS_OPTIONS,
-                },
-              ]}
-            />
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">触发日期</span>
-              <input
-                type="date"
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
-                className="h-9 rounded-md border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/50"
-              />
-              <span className="text-muted-foreground">至</span>
-              <input
-                type="date"
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
-                className="h-9 rounded-md border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/50"
-              />
-            </div>
-          </div>
+          <SearchToolbar
+            search={{
+              value: search,
+              onChange: setSearch,
+              placeholder: "按员工姓名或 ID 搜索",
+            }}
+            dateRange={{
+              from,
+              to,
+              onChange: (f, t) => {
+                setFrom(f);
+                setTo(t);
+              },
+              label: "触发日期",
+            }}
+            filters={[
+              {
+                name: "status",
+                placeholder: "税务状态",
+                value: status,
+                onChange: setStatus,
+                options: TAX_EVENT_STATUS_OPTIONS,
+              },
+            ]}
+          />
         }
         pagination={
           <Pagination
@@ -156,10 +168,23 @@ export function TaxEventsClient() {
           />
         }
       >
+        {pending.total > 0 && (
+          <PendingBanner
+            rows={pending.items}
+            total={pending.total}
+            page={pendingPage}
+            pageSize={pending.pageSize}
+            onPageChange={setPendingPage}
+            onClickRow={(id) => setDetailId(id)}
+          />
+        )}
+
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>员工</TableHead>
+              <TableHead>激励计划</TableHead>
+              <TableHead>类型</TableHead>
               <TableHead>税务类型</TableHead>
               <TableHead>具体操作</TableHead>
               <TableHead>触发日期</TableHead>
@@ -171,13 +196,13 @@ export function TaxEventsClient() {
           <TableBody>
             {loading && data.items.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                <TableCell colSpan={9} className="text-center text-muted-foreground">
                   加载中...
                 </TableCell>
               </TableRow>
             ) : data.items.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                <TableCell colSpan={9} className="text-center text-muted-foreground">
                   暂无税务事件
                 </TableCell>
               </TableRow>
@@ -187,6 +212,10 @@ export function TaxEventsClient() {
                   <TableCell className="max-w-[160px] truncate">
                     {r.user.name}（{r.user.employeeId}）
                   </TableCell>
+                  <TableCell className="max-w-[200px] truncate">
+                    {r.grant?.plan?.title ?? "-"}
+                  </TableCell>
+                  <TableCell>{r.grant?.plan?.type ?? "-"}</TableCell>
                   <TableCell>{TAX_EVENT_TYPE_LABEL[r.eventType]}</TableCell>
                   <TableCell>{r.operationType}</TableCell>
                   <TableCell>
@@ -217,9 +246,75 @@ export function TaxEventsClient() {
         taxEventId={detailId}
         onClose={() => setDetailId(null)}
         canConfirm={canConfirm}
-        onConfirmed={load}
+        onConfirmed={async () => {
+          await Promise.all([load(), loadPending()]);
+        }}
       />
     </>
   );
 }
 
+function PendingBanner({
+  rows,
+  total,
+  page,
+  pageSize,
+  onPageChange,
+  onClickRow,
+}: {
+  rows: Row[];
+  total: number;
+  page: number;
+  pageSize: number;
+  onPageChange: (p: number) => void;
+  onClickRow: (id: string) => void;
+}) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  return (
+    <div className="border-b border-border bg-violet-50/60 p-3">
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-medium text-violet-800">
+          已上传凭证待确认（共 {total} 条）
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page <= 1}
+            onClick={() => onPageChange(page - 1)}
+          >
+            上一页
+          </Button>
+          <span className="text-muted-foreground">
+            {page} / {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page >= totalPages}
+            onClick={() => onPageChange(page + 1)}
+          >
+            下一页
+          </Button>
+        </div>
+      </div>
+      <ul className="mt-2 space-y-1">
+        {rows.map((r) => (
+          <li key={r.id} className="text-sm">
+            <button
+              type="button"
+              onClick={() => onClickRow(r.id)}
+              className="text-primary hover:underline"
+            >
+              {r.user.name} · {r.grant?.plan?.title ?? "-"} · {r.operationType}
+            </button>
+            <span className="ml-2 text-muted-foreground">
+              数量 {r.quantity} · 触发{" "}
+              {new Date(r.eventDate).toLocaleDateString("zh-CN")}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}

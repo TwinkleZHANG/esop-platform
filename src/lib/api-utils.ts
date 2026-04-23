@@ -55,7 +55,7 @@ export function isErrorResponse(
   return x instanceof NextResponse;
 }
 
-// ========== 分页解析（PRD 9.6：默认每页 20 条，按创建时间倒序） ==========
+// ========== 分页解析（默认每页 10 条，按创建时间倒序） ==========
 
 export interface PaginationParams {
   page: number;
@@ -68,7 +68,7 @@ export function parsePagination(
   searchParams: URLSearchParams,
   defaults: { pageSize?: number; maxPageSize?: number } = {}
 ): PaginationParams {
-  const defaultPageSize = defaults.pageSize ?? 20;
+  const defaultPageSize = defaults.pageSize ?? 10;
   const maxPageSize = defaults.maxPageSize ?? 100;
 
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
@@ -96,4 +96,29 @@ export function paged<T>(
   { page, pageSize }: PaginationParams
 ): PagedResult<T> {
   return { items, total, page, pageSize };
+}
+
+/**
+ * 解析 ?from=YYYY-MM-DD&to=YYYY-MM-DD。to 自动包到当天 23:59:59.999。
+ * 任意一边缺失则不设。
+ */
+export function parseDateRange(searchParams: URLSearchParams): {
+  gte?: Date;
+  lte?: Date;
+} {
+  const out: { gte?: Date; lte?: Date } = {};
+  const fromStr = searchParams.get("from");
+  const toStr = searchParams.get("to");
+  if (fromStr) {
+    const dt = new Date(fromStr);
+    if (!isNaN(dt.getTime())) out.gte = dt;
+  }
+  if (toStr) {
+    const dt = new Date(toStr);
+    if (!isNaN(dt.getTime())) {
+      dt.setHours(23, 59, 59, 999);
+      out.lte = dt;
+    }
+  }
+  return out;
 }
