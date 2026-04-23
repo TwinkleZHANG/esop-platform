@@ -91,17 +91,22 @@ export function TaxEventsClient() {
     setPage(1);
   }, [debouncedSearch, status, from, to]);
 
+  function handleExport() {
+    const qs = new URLSearchParams();
+    if (debouncedSearch) qs.set("search", debouncedSearch);
+    if (status && status !== "ALL") qs.set("status", status);
+    if (from) qs.set("from", from);
+    if (to) qs.set("to", to);
+    window.location.href = `/api/tax-events/export?${qs.toString()}`;
+  }
+
   return (
     <>
       <ListPageShell
         title="税务事件单"
         actions={
           canExport && (
-            <Button
-              variant="outline"
-              onClick={() => alert("导出功能将在 Step 5 接入")}
-              disabled
-            >
+            <Button variant="outline" onClick={handleExport}>
               导出 Excel
             </Button>
           )

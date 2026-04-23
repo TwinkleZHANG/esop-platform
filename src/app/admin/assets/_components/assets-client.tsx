@@ -64,6 +64,13 @@ export function AssetsClient() {
     void load();
   }, [load]);
 
+  function handleExport() {
+    const qs = new URLSearchParams();
+    if (debouncedSearch) qs.set("search", debouncedSearch);
+    if (status && status !== "ALL") qs.set("status", status);
+    window.location.href = `/api/assets/export?${qs.toString()}`;
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-background p-4 text-sm">
@@ -91,11 +98,7 @@ export function AssetsClient() {
         title="资产管理"
         actions={
           canExport && (
-            <Button
-              variant="outline"
-              disabled
-              onClick={() => alert("导出功能将在 Step 5 接入")}
-            >
+            <Button variant="outline" onClick={handleExport}>
               导出 Excel
             </Button>
           )
