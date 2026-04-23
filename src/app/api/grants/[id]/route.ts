@@ -128,7 +128,7 @@ export async function PUT(
   if (d.vestingStartDate !== undefined) {
     if (d.vestingStartDate) {
       const dt = new Date(d.vestingStartDate);
-      if (isNaN(dt.getTime())) return fail("归属开始日期格式错误");
+      if (isNaN(dt.getTime())) return fail("授予计划开始日期格式错误");
       data.vestingStartDate = dt;
     } else {
       data.vestingStartDate = null;

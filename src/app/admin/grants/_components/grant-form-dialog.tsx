@@ -205,13 +205,17 @@ export function GrantFormDialog({ open, onOpenChange, onSubmit }: Props) {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label>归属开始日期</Label>
-                  <Input
+                  <Label>授予计划开始日期</Label>
+                  <input
                     type="date"
-                    value={form.vestingStartDate}
+                    value={form.vestingStartDate ?? ""}
                     onChange={(e) =>
-                      setForm({ ...form, vestingStartDate: e.target.value })
+                      setForm({
+                        ...form,
+                        vestingStartDate: e.target.value,
+                      })
                     }
+                    className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/50"
                   />
                   <p className="text-xs text-muted-foreground">
                     留空则默认等于授予日期

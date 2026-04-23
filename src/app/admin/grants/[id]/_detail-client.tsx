@@ -227,7 +227,7 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
             value={new Date(grant.grantDate).toLocaleDateString("zh-CN")}
           />
           <Field
-            label="归属开始日期"
+            label="授予计划开始日期"
             value={
               grant.vestingStartDate
                 ? new Date(grant.vestingStartDate).toLocaleDateString("zh-CN")
@@ -356,7 +356,7 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
         ) : (
           <ul className="space-y-1 text-sm">
             {logs.map((l) => (
-              <li key={l.id} className="flex items-center gap-3">
+              <li key={l.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span className="text-muted-foreground">
                   {l.timestampDisplay}
                 </span>
@@ -463,7 +463,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="overflow-x-auto rounded-lg border border-border bg-background p-5">
+    <section className="min-w-0 overflow-hidden rounded-lg border border-border bg-background p-5 [&_table_td]:whitespace-nowrap [&_table_th]:whitespace-nowrap">
       <h2 className="mb-3 text-sm font-semibold">{title}</h2>
       {children}
     </section>

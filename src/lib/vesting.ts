@@ -21,12 +21,14 @@ export interface GeneratedVestingRecord {
 /**
  * 生成归属计划。
  *
- * 策略（PRD 3.8 + 6.2 注释）：
- * - 每期按 floor(totalQuantity / totalPeriods) 截断；
- * - 剩余零头一次性并入最后一期，保证 Σquantity === totalQuantity。
- * - cliff 段合并为单条记录（quantity = perPeriod × cliffPeriods），
- *   归属日期 = start + cliffPeriods × 周期长度；
- *   之后按周期逐期生成直到 totalPeriods。
+ * 策略（PRD 3）：累计进位法（cumulative rounding），保证整数归属并严格整除到 totalQuantity。
+ *
+ * 算法：
+ *   cumN  = round(totalQuantity × N / totalPeriods)
+ *   本期归属 quantityN = cumN - cum(N-1)
+ *   最后一期强制 = totalQuantity - Σ(前几期)，避免浮点累积误差
+ *
+ * cliff 段合并：把前 cliffPeriods 期合成单条记录（qty = cum(cliffPeriods)）。
  */
 export function generateVestingSchedule(
   params: GenerateVestingScheduleParams
@@ -66,41 +68,34 @@ export function generateVestingSchedule(
     ];
   }
 
-  // 截断（Decimal.floor 默认是向下取整）
-  const perPeriod = total.div(totalPeriods).floor();
+  // 累计进位：cumAt(N) = round(total * N / totalPeriods)
+  const cumAt = (n: number): Decimal =>
+    total.mul(n).div(totalPeriods).toDecimalPlaces(0, D.ROUND_HALF_EVEN);
 
   const records: GeneratedVestingRecord[] = [];
 
-  if (cliffPeriods >= 1) {
+  // 起始期：cliff 段合并为单条（qty = cumAt(cliffPeriods)），或无 cliff 时第一期 = cumAt(1)
+  const startPeriod = cliffPeriods >= 1 ? cliffPeriods : 1;
+
+  const firstQty = cumAt(startPeriod);
+  records.push({
+    vestingDate: addMonths(vestingStartDate, startPeriod * periodMonths),
+    quantity: firstQty,
+  });
+
+  for (let n = startPeriod + 1; n <= totalPeriods; n++) {
+    const qty = cumAt(n).sub(cumAt(n - 1));
     records.push({
-      vestingDate: addMonths(vestingStartDate, cliffPeriods * periodMonths),
-      quantity: perPeriod.mul(cliffPeriods),
+      vestingDate: addMonths(vestingStartDate, n * periodMonths),
+      quantity: qty,
     });
-    for (let i = cliffPeriods + 1; i <= totalPeriods; i++) {
-      records.push({
-        vestingDate: addMonths(vestingStartDate, i * periodMonths),
-        quantity: perPeriod,
-      });
-    }
-  } else {
-    for (let i = 1; i <= totalPeriods; i++) {
-      records.push({
-        vestingDate: addMonths(vestingStartDate, i * periodMonths),
-        quantity: perPeriod,
-      });
-    }
   }
 
-  // 余数并入最后一期
-  const sumOfFloors = records.reduce(
-    (acc, r) => acc.add(r.quantity),
-    new D(0)
-  );
-  const remainder = total.sub(sumOfFloors);
-  if (!remainder.isZero()) {
-    const last = records[records.length - 1];
-    last.quantity = last.quantity.add(remainder);
-  }
+  // 最后一期强制等于 total - Σ(前面) —— 防止累计舍入误差
+  const sumExceptLast = records
+    .slice(0, -1)
+    .reduce((acc, r) => acc.add(r.quantity), new D(0));
+  records[records.length - 1].quantity = total.sub(sumExceptLast);
 
   return records;
 }

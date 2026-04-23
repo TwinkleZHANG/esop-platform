@@ -164,7 +164,7 @@ export async function POST(req: Request) {
   const vestingStartDate = d.vestingStartDate
     ? new Date(d.vestingStartDate)
     : grantDate;
-  if (isNaN(vestingStartDate.getTime())) return fail("归属开始日期格式错误");
+  if (isNaN(vestingStartDate.getTime())) return fail("授予计划开始日期格式错误");
 
   // Draft 阶段不生成归属记录（PRD 3.3 + 4.5）
   const grant = await prisma.grant.create({
