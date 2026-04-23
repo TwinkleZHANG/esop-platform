@@ -1302,6 +1302,7 @@ model VestingRecord {
   updatedAt           DateTime            @updatedAt
 
   grant           Grant               @relation(fields: [grantId], references: [id])
+  taxEvents       TaxEvent[]
 
   @@map("vesting_records")
 }
@@ -1341,6 +1342,7 @@ model TaxEvent {
   eventDate          DateTime
   fmvAtEvent         Decimal
   valuationId        String?                               // 取值来源：4.4 节 FMV 引用规则（日期 ≤ 触发日 的最近一条），用于「作为触发日 FMV 来源」的删除约束判定
+  vestingRecordId    String?                               // 仅 RSU 归属税务一对一关联归属记录；Option 行权走 FIFO 跨多条，留 null
   strikePrice        Decimal           @default(0)
   status             TaxEventStatus    @default(PENDING_PAYMENT)
   receiptFiles       String[]                              // 员工上传的凭证文件路径（最多 3 个）
@@ -1353,6 +1355,7 @@ model TaxEvent {
   user               User              @relation(fields: [userId], references: [id])
   operationRequest   OperationRequest?  @relation(fields: [operationRequestId], references: [id])
   valuation          Valuation?        @relation(fields: [valuationId], references: [id])
+  vestingRecord      VestingRecord?    @relation(fields: [vestingRecordId], references: [id])
 
   @@map("tax_events")
 }

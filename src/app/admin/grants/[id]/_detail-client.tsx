@@ -9,6 +9,7 @@ import type {
   OperationRequestType,
   OperationTarget,
   TaxEventStatus,
+  TaxEventType,
   VestingRecordStatus,
 } from "@prisma/client";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { WindowDaysPicker } from "@/components/window-days-picker";
+import {
+  TAX_EVENT_STATUS_LABEL,
+  TAX_EVENT_STATUS_TONE,
+  TAX_EVENT_TYPE_LABEL,
+} from "@/lib/i18n";
+import { TaxEventDetailDialog } from "@/app/admin/tax-events/_components/tax-event-detail-dialog";
 import { EditDraftDialog } from "./_edit-draft-dialog";
 import {
   Table,
@@ -68,7 +75,7 @@ interface GrantDetail {
   }[];
   taxEvents: {
     id: string;
-    eventType: string;
+    eventType: TaxEventType;
     operationType: string;
     quantity: string;
     eventDate: string;
@@ -144,6 +151,7 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
   const [approvalTarget, setApprovalTarget] = useState<
     GrantDetail["operationRequests"][number] | null
   >(null);
+  const [taxEventId, setTaxEventId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const [g, l] = await Promise.all([
@@ -313,35 +321,46 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
         )}
       </Section>
 
-      {/* ③ 税务事件（占位） */}
+      {/* ③ 税务事件 */}
       <Section title="税务事件">
         {grant.taxEvents.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            暂无税务事件（Session 5 接入完整流程）
-          </p>
+          <p className="text-sm text-muted-foreground">暂无税务事件</p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>类型</TableHead>
-                <TableHead>操作</TableHead>
+                <TableHead>税务类型</TableHead>
+                <TableHead>具体操作</TableHead>
                 <TableHead>数量</TableHead>
                 <TableHead>FMV</TableHead>
                 <TableHead>事件日期</TableHead>
                 <TableHead>状态</TableHead>
+                <TableHead>操作</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {grant.taxEvents.map((t) => (
                 <TableRow key={t.id}>
-                  <TableCell>{t.eventType}</TableCell>
+                  <TableCell>{TAX_EVENT_TYPE_LABEL[t.eventType]}</TableCell>
                   <TableCell>{t.operationType}</TableCell>
                   <TableCell>{t.quantity}</TableCell>
                   <TableCell>{t.fmvAtEvent}</TableCell>
                   <TableCell>
                     {new Date(t.eventDate).toLocaleDateString("zh-CN")}
                   </TableCell>
-                  <TableCell>{t.status}</TableCell>
+                  <TableCell>
+                    <StatusBadge tone={TAX_EVENT_STATUS_TONE[t.status]}>
+                      {TAX_EVENT_STATUS_LABEL[t.status]}
+                    </StatusBadge>
+                  </TableCell>
+                  <TableCell>
+                    <button
+                      onClick={() => setTaxEventId(t.id)}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      查看
+                    </button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -450,6 +469,12 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
         target={approvalTarget}
         onClose={() => setApprovalTarget(null)}
         onDone={load}
+      />
+      <TaxEventDetailDialog
+        taxEventId={taxEventId}
+        onClose={() => setTaxEventId(null)}
+        canConfirm={hasPermission(role, "taxEvent.confirm")}
+        onConfirmed={load}
       />
     </div>
   );
