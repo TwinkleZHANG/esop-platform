@@ -1,0 +1,88 @@
+import {
+  GrantStatus,
+  Prisma,
+  UserRole,
+  VestingRecordStatus,
+} from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import {
+  fail,
+  isErrorResponse,
+  ok,
+  paged,
+  parsePagination,
+  requireSession,
+} from "@/lib/api-utils";
+
+export async function GET(req: Request) {
+  const session = await requireSession();
+  if (isErrorResponse(session)) return session;
+  if (session.user.role !== UserRole.EMPLOYEE) return fail("仅员工可访问", 403);
+
+  const url = new URL(req.url);
+  const pagination = parsePagination(url.searchParams);
+  const search = (url.searchParams.get("search") ?? "").trim();
+  const status = url.searchParams.get("status");
+
+  const where: Prisma.VestingRecordWhereInput = {
+    grant: {
+      userId: session.user.id,
+      status: { not: GrantStatus.DRAFT },
+    },
+  };
+  if (
+    status === "PENDING" ||
+    status === "VESTED" ||
+    status === "PARTIALLY_SETTLED" ||
+    status === "SETTLED" ||
+    status === "CLOSED"
+  ) {
+    where.status = status as VestingRecordStatus;
+  }
+  if (search) {
+    where.grant = {
+      ...(where.grant as Prisma.GrantWhereInput),
+      plan: {
+        OR: [
+          { title: { contains: search, mode: "insensitive" } },
+          { id: { contains: search, mode: "insensitive" } },
+        ],
+      },
+    };
+  }
+
+  const [items, total] = await Promise.all([
+    prisma.vestingRecord.findMany({
+      where,
+      orderBy: { vestingDate: "desc" },
+      skip: pagination.skip,
+      take: pagination.take,
+      include: {
+        grant: {
+          select: {
+            id: true,
+            plan: { select: { id: true, title: true, type: true } },
+          },
+        },
+      },
+    }),
+    prisma.vestingRecord.count({ where }),
+  ]);
+
+  return ok(
+    paged(
+      items.map((v) => ({
+        id: v.id,
+        grantId: v.grantId,
+        planTitle: v.grant.plan.title,
+        planType: v.grant.plan.type,
+        vestingDate: v.vestingDate,
+        quantity: v.quantity.toFixed(0),
+        exercisableOptions: v.exercisableOptions.toFixed(0),
+        status: v.status,
+      })),
+      total,
+      pagination
+    )
+  );
+}
