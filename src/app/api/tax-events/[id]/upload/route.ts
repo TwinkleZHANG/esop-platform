@@ -45,6 +45,8 @@ export async function POST(
   const files = form.getAll("files").filter((v): v is File => v instanceof File);
   if (files.length === 0) return fail("未选择文件");
   if (files.length > MAX_FILES) return fail(`最多上传 ${MAX_FILES} 个文件`);
+  const notesField = form.get("notes");
+  const notes = typeof notesField === "string" ? notesField.trim() : "";
 
   for (const f of files) {
     if (!ALLOWED_MIME.has(f.type)) {
@@ -83,8 +85,9 @@ export async function POST(
     data: {
       receiptFiles: savedPaths,
       status: TaxEventStatus.RECEIPT_UPLOADED,
+      ...(notes ? { employeeNotes: notes } : {}),
     },
-    select: { id: true, status: true, receiptFiles: true },
+    select: { id: true, status: true, receiptFiles: true, employeeNotes: true },
   });
 
   return ok(updated);
