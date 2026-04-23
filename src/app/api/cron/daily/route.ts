@@ -99,6 +99,7 @@ export async function POST(req: Request) {
               eventDate: now,
               fmvAtEvent: fmv.fmv,
               valuationId: fmv.id,
+              vestingRecordId: rec.id,
               strikePrice: new Prisma.Decimal(0),
               status: TaxEventStatus.PENDING_PAYMENT,
               operationRequestId: null,
