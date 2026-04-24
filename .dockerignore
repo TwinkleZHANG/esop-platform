@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.env
+.env.local
+.env.*.local
+uploads
+coverage
+.claude
+docs
+*.md
+!README.md
+Dockerfile
+.dockerignore
+.vscode
+.idea
