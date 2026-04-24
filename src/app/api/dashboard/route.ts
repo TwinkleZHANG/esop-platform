@@ -5,10 +5,11 @@ import {
   UserRole,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { isErrorResponse, ok, requireSession } from "@/lib/api-utils";
+import { isErrorResponse, ok, requirePermission } from "@/lib/api-utils";
 
 export async function GET() {
-  const guard = await requireSession();
+  // 管理端 Dashboard 聚合数据；员工无权访问
+  const guard = await requirePermission("asset.view");
   if (isErrorResponse(guard)) return guard;
 
   const [

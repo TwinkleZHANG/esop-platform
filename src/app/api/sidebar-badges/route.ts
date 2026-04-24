@@ -5,10 +5,11 @@ import {
   VestingRecordStatus,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { isErrorResponse, ok, requireSession } from "@/lib/api-utils";
+import { isErrorResponse, ok, requirePermission } from "@/lib/api-utils";
 
 export async function GET() {
-  const guard = await requireSession();
+  // 仅管理端使用此接口；员工端有独立的 /api/employee/alerts
+  const guard = await requirePermission("asset.view");
   if (isErrorResponse(guard)) return guard;
 
   const now = new Date();

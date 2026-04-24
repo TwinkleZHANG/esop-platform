@@ -71,7 +71,7 @@ export async function GET(
       id: g.id,
       planTitle: g.plan.title,
       planType: g.plan.type,
-      totalQuantity: g.totalQuantity.toString(),
+      totalQuantity: g.totalQuantity.toFixed(0),
       status: g.status,
       grantDate: g.grantDate,
     })),
