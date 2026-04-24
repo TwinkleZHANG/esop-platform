@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 import { BackToListButton } from "@/components/back-to-list-button";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   GRANT_STATUS_LABEL,
   GRANT_STATUS_TONE,
@@ -121,10 +123,13 @@ export function EmployeeAssetDetailClient({
             <TableBody>
               {data.grants.map((g) => (
                 <TableRow key={g.id}>
-                  <TableCell className="max-w-[220px] truncate">
+                  <TableCell>
                     <Link
                       href={`/admin/grants/${g.id}`}
-                      className="text-primary hover:underline"
+                      className={cn(
+                        buttonVariants({ variant: "outline", size: "sm" }),
+                        "max-w-[220px] truncate"
+                      )}
                     >
                       {g.planTitle}
                     </Link>

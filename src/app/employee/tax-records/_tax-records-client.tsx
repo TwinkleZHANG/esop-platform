@@ -19,6 +19,8 @@ import { ListPageShell } from "@/components/list-page/list-page-shell";
 import { SearchToolbar } from "@/components/list-page/search-toolbar";
 import { Pagination } from "@/components/list-page/pagination";
 import { StatusBadge } from "@/components/status-badge";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import {
   TAX_EVENT_STATUS_LABEL,
@@ -197,7 +199,12 @@ export function EmployeeTaxRecordsClient() {
                             href={`/api/tax-events/${r.id}/files/${idx}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-primary hover:underline"
+                            className={cn(
+                              buttonVariants({
+                                variant: "outline",
+                                size: "sm",
+                              })
+                            )}
                           >
                             凭证 {idx + 1}
                           </a>

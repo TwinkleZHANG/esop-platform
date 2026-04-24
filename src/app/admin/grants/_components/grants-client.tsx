@@ -344,14 +344,19 @@ function PendingBanner({
       </div>
       <ul className="mt-2 space-y-1">
         {rows.map((g) => (
-          <li key={g.id} className="whitespace-nowrap text-sm">
+          <li
+            key={g.id}
+            className="flex items-center gap-2 whitespace-nowrap text-sm"
+          >
             <Link
               href={`/admin/grants/${g.id}`}
-              className="text-primary hover:underline"
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" })
+              )}
             >
               {g.user.name} · {g.plan.title}
             </Link>
-            <span className="ml-2 text-muted-foreground">
+            <span className="text-muted-foreground">
               待审批申请 {g.pendingRequestCount} 条
             </span>
           </li>

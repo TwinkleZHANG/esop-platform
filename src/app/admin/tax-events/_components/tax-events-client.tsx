@@ -326,15 +326,18 @@ function PendingBanner({
       </div>
       <ul className="mt-2 space-y-1">
         {rows.map((r) => (
-          <li key={r.id} className="whitespace-nowrap text-sm">
-            <button
-              type="button"
+          <li
+            key={r.id}
+            className="flex items-center gap-2 whitespace-nowrap text-sm"
+          >
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => onClickRow(r.id)}
-              className="text-primary hover:underline"
             >
               {r.user.name} · {r.grant?.plan?.title ?? "-"} · {r.operationType}
-            </button>
-            <span className="ml-2 text-muted-foreground">
+            </Button>
+            <span className="text-muted-foreground">
               数量 {r.quantity} · 触发{" "}
               {new Date(r.eventDate).toLocaleDateString("zh-CN")}
             </span>

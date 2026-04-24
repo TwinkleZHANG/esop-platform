@@ -5,7 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import type { PlanType } from "@prisma/client";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -172,7 +173,9 @@ export function AssetsClient() {
                   <TableCell>
                     <Link
                       href={`/admin/assets/${r.userId}`}
-                      className="text-primary hover:underline"
+                      className={cn(
+                        buttonVariants({ variant: "outline", size: "sm" })
+                      )}
                     >
                       {r.userName}
                     </Link>
