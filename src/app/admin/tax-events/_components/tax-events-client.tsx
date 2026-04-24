@@ -228,12 +228,13 @@ export function TaxEventsClient() {
                     </StatusBadge>
                   </TableCell>
                   <TableCell>
-                    <button
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => setDetailId(r.id)}
-                      className="text-sm text-primary hover:underline"
                     >
                       查看
-                    </button>
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))

@@ -171,12 +171,13 @@ export function ValuationsClient() {
                   <TableCell>{v.source ?? "-"}</TableCell>
                   <TableCell>
                     {canManage && (
-                      <button
+                      <Button
+                        variant="destructive"
+                        size="sm"
                         onClick={() => handleDelete(v.id)}
-                        className="text-sm text-destructive hover:underline"
                       >
                         删除
-                      </button>
+                      </Button>
                     )}
                   </TableCell>
                 </TableRow>

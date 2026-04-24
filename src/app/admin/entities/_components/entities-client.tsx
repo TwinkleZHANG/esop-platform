@@ -226,12 +226,13 @@ export function EntitiesClient() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <button
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => setEditTarget(e)}
-                      className="text-sm text-primary hover:underline"
                     >
                       查看
-                    </button>
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))

@@ -152,6 +152,8 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
     GrantDetail["operationRequests"][number] | null
   >(null);
   const [taxEventId, setTaxEventId] = useState<string | null>(null);
+  const [vestingPage, setVestingPage] = useState(1);
+  const VESTING_PAGE_SIZE = 15;
 
   const load = useCallback(async () => {
     const [g, l] = await Promise.all([
@@ -290,34 +292,84 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
             Draft 阶段无归属记录；进入 Granted 状态后自动生成。
           </p>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>归属日期</TableHead>
-                <TableHead>归属数量</TableHead>
-                {isOption && <TableHead>可行权期权</TableHead>}
-                <TableHead>状态</TableHead>
-                <TableHead>实际归属日</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {grant.vestingRecords.map((v) => (
-                <TableRow key={v.id}>
-                  <TableCell>
-                    {new Date(v.vestingDate).toLocaleDateString("zh-CN")}
-                  </TableCell>
-                  <TableCell>{v.quantity}</TableCell>
-                  {isOption && <TableCell>{v.exercisableOptions}</TableCell>}
-                  <TableCell>{VESTING_STATUS_LABEL[v.status]}</TableCell>
-                  <TableCell>
-                    {v.actualVestDate
-                      ? new Date(v.actualVestDate).toLocaleDateString("zh-CN")
-                      : "-"}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          (() => {
+            const total = grant.vestingRecords.length;
+            const totalPages = Math.max(
+              1,
+              Math.ceil(total / VESTING_PAGE_SIZE)
+            );
+            const currentPage = Math.min(vestingPage, totalPages);
+            const start = (currentPage - 1) * VESTING_PAGE_SIZE;
+            const paged = grant.vestingRecords.slice(
+              start,
+              start + VESTING_PAGE_SIZE
+            );
+            return (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>归属日期</TableHead>
+                      <TableHead>归属数量</TableHead>
+                      {isOption && <TableHead>可行权期权</TableHead>}
+                      <TableHead>状态</TableHead>
+                      <TableHead>实际归属日</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paged.map((v) => (
+                      <TableRow key={v.id}>
+                        <TableCell>
+                          {new Date(v.vestingDate).toLocaleDateString("zh-CN")}
+                        </TableCell>
+                        <TableCell>{v.quantity}</TableCell>
+                        {isOption && (
+                          <TableCell>{v.exercisableOptions}</TableCell>
+                        )}
+                        <TableCell>{VESTING_STATUS_LABEL[v.status]}</TableCell>
+                        <TableCell>
+                          {v.actualVestDate
+                            ? new Date(v.actualVestDate).toLocaleDateString(
+                                "zh-CN"
+                              )
+                            : "-"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {total > VESTING_PAGE_SIZE && (
+                  <div className="mt-3 flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      共 {total} 条 · 第 {start + 1}-
+                      {Math.min(start + VESTING_PAGE_SIZE, total)} 条
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={currentPage <= 1}
+                        onClick={() => setVestingPage(currentPage - 1)}
+                      >
+                        上一页
+                      </Button>
+                      <span>
+                        {currentPage} / {totalPages}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={currentPage >= totalPages}
+                        onClick={() => setVestingPage(currentPage + 1)}
+                      >
+                        下一页
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()
         )}
       </Section>
 
@@ -354,12 +406,13 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
                     </StatusBadge>
                   </TableCell>
                   <TableCell>
-                    <button
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => setTaxEventId(t.id)}
-                      className="text-sm text-primary hover:underline"
                     >
                       查看
-                    </button>
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -428,12 +481,9 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
                   <TableCell>{r.approverNotes ?? "-"}</TableCell>
                   <TableCell>
                     {canApprove && r.status === "PENDING" && (
-                      <button
-                        onClick={() => setApprovalTarget(r)}
-                        className="text-sm text-primary hover:underline"
-                      >
+                      <Button size="sm" onClick={() => setApprovalTarget(r)}>
                         审批
-                      </button>
+                      </Button>
                     )}
                   </TableCell>
                 </TableRow>

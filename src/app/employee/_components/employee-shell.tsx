@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -14,6 +14,7 @@ import {
   ReceiptIcon,
   LogOutIcon,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type BadgeKey = "pendingPaymentCount";
@@ -55,10 +56,37 @@ interface Props {
   children: React.ReactNode;
 }
 
+const DISMISS_KEY = "esop:dismissedClosingAlerts";
+const ALERTS_PAGE_SIZE = 3;
+
+function readDismissed(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = window.localStorage.getItem(DISMISS_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? new Set(arr as string[]) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function writeDismissed(set: Set<string>) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(DISMISS_KEY, JSON.stringify(Array.from(set)));
+}
+
+function recomputeDays(deadline: string): number {
+  const diff = new Date(deadline).getTime() - Date.now();
+  return Math.ceil(diff / (24 * 60 * 60 * 1000));
+}
+
 export function EmployeeShell({ userName, children }: Props) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [alerts, setAlerts] = useState<Alerts | null>(null);
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [alertPage, setAlertPage] = useState(1);
 
   const loadAlerts = useCallback(async () => {
     const res = await fetch("/api/employee/alerts");
@@ -67,8 +95,44 @@ export function EmployeeShell({ userName, children }: Props) {
   }, []);
 
   useEffect(() => {
+    setDismissed(readDismissed());
+  }, []);
+
+  useEffect(() => {
     void loadAlerts();
   }, [loadAlerts, pathname]);
+
+  // 排序 + 过滤 dismissed：days ASC，同 days 时 operableOptions DESC
+  const visibleAlerts = useMemo(() => {
+    if (!alerts) return [];
+    return alerts.closingGrants
+      .filter((g) => !dismissed.has(g.grantId))
+      .map((g) => ({ ...g, days: recomputeDays(g.deadline) }))
+      .sort((a, b) => {
+        if (a.days !== b.days) return a.days - b.days;
+        return Number(b.operableOptions) - Number(a.operableOptions);
+      });
+  }, [alerts, dismissed]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(visibleAlerts.length / ALERTS_PAGE_SIZE)
+  );
+  const currentPage = Math.min(alertPage, totalPages);
+  const pageStart = (currentPage - 1) * ALERTS_PAGE_SIZE;
+  const pagedAlerts = visibleAlerts.slice(
+    pageStart,
+    pageStart + ALERTS_PAGE_SIZE
+  );
+
+  function dismissAlert(grantId: string) {
+    setDismissed((prev) => {
+      const next = new Set(prev);
+      next.add(grantId);
+      writeDismissed(next);
+      return next;
+    });
+  }
 
   return (
     <div className="flex min-h-screen w-full">
@@ -99,7 +163,8 @@ export function EmployeeShell({ userName, children }: Props) {
         <nav className="flex-1 overflow-y-auto p-2">
           <ul className="space-y-1">
             {NAV.map(({ href, label, icon: Icon, badgeKey }) => {
-              const active = pathname === href || pathname.startsWith(href + "/");
+              const active =
+                pathname === href || pathname.startsWith(href + "/");
               const count = badgeKey && alerts ? alerts[badgeKey] : 0;
               return (
                 <li key={href}>
@@ -134,27 +199,60 @@ export function EmployeeShell({ userName, children }: Props) {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-border bg-background px-6 py-3 text-sm">
           <span className="text-muted-foreground">
-            欢迎，<span className="font-medium text-foreground">{userName}</span>
+            欢迎，
+            <span className="font-medium text-foreground">{userName}</span>
           </span>
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 hover:bg-muted"
           >
             <LogOutIcon className="size-3.5" />
             退出登录
-          </button>
+          </Button>
         </header>
 
-        {alerts && (alerts.closingGrants.length > 0) && (
-          <div className="space-y-2 border-b border-orange-200 bg-orange-50 px-6 py-3">
-            {alerts.offboarded ? (
-              <OffboardBanner alerts={alerts} />
-            ) : (
-              alerts.closingGrants.map((g) => (
-                <ClosingBanner key={g.grantId} grant={g} />
-              ))
-            )}
+        {visibleAlerts.length > 0 && (
+          <div className="border-b border-orange-200 bg-orange-50 px-6 py-3">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-sm font-medium text-orange-800">
+                行权窗口提醒（共 {visibleAlerts.length} 条）
+              </span>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2 text-xs">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage <= 1}
+                    onClick={() => setAlertPage(currentPage - 1)}
+                  >
+                    上一页
+                  </Button>
+                  <span className="text-muted-foreground">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setAlertPage(currentPage + 1)}
+                  >
+                    下一页
+                  </Button>
+                </div>
+              )}
+            </div>
+            <ul className="space-y-1">
+              {pagedAlerts.map((g) => (
+                <AlertItem
+                  key={g.grantId}
+                  grant={g}
+                  days={g.days}
+                  offboarded={alerts?.offboarded ?? false}
+                  onDismiss={() => dismissAlert(g.grantId)}
+                />
+              ))}
+            </ul>
           </div>
         )}
 
@@ -164,42 +262,51 @@ export function EmployeeShell({ userName, children }: Props) {
   );
 }
 
-function ClosingBanner({ grant }: { grant: ClosingGrant }) {
+function AlertItem({
+  grant,
+  days,
+  offboarded,
+  onDismiss,
+}: {
+  grant: ClosingGrant;
+  days: number;
+  offboarded: boolean;
+  onDismiss: () => void;
+}) {
   const deadlineStr = new Date(grant.deadline).toLocaleDateString("zh-CN");
-  return (
-    <p className="text-sm text-orange-800">
-      您有一条期权授予（
-      <span className="font-medium">{grant.planTitle}</span>
-      ）进入关闭流程，已归属未行权期权：
-      <span className="font-semibold">{grant.operableOptions}</span> 份，必须在{" "}
-      <span className="font-semibold">{deadlineStr}</span>{" "}
-      前行权，逾期将自动失效。剩余{" "}
-      <span className="font-semibold">{grant.daysRemaining}</span> 天。
-    </p>
-  );
-}
+  const expired = days <= 0;
 
-function OffboardBanner({ alerts }: { alerts: Alerts }) {
-  const total = alerts.closingGrants.reduce(
-    (acc, g) => acc + Number(g.operableOptions),
-    0
-  );
-  const earliest = alerts.closingGrants
-    .map((g) => new Date(g.deadline).getTime())
-    .sort((a, b) => a - b)[0];
-  const deadlineStr = earliest
-    ? new Date(earliest).toLocaleDateString("zh-CN")
-    : "-";
-  const daysRemaining = earliest
-    ? Math.max(0, Math.ceil((earliest - Date.now()) / (24 * 60 * 60 * 1000)))
-    : 0;
+  const prefix = offboarded
+    ? "您已离职，"
+    : "您有一条期权授予进入关闭流程，";
+
   return (
-    <p className="text-sm text-orange-800">
-      您已离职，已归属未行权期权：
-      <span className="font-semibold">{total}</span> 份，必须在{" "}
-      <span className="font-semibold">{deadlineStr}</span>{" "}
-      前行权，逾期将自动失效。剩余{" "}
-      <span className="font-semibold">{daysRemaining}</span> 天。
-    </p>
+    <li className="flex flex-wrap items-center gap-2 text-sm text-orange-800">
+      <span>
+        {prefix}
+        {!offboarded && (
+          <>
+            <span className="font-medium">{grant.planTitle}</span>：
+          </>
+        )}
+        已归属未行权期权：
+        <span className="font-semibold">{grant.operableOptions}</span> 份，必须在{" "}
+        <span className="font-semibold">{deadlineStr}</span> 前行权，
+        {expired ? (
+          <>
+            <span className="font-semibold text-red-700">已过期</span>，该额度已失效。
+          </>
+        ) : (
+          <>
+            剩余 <span className="font-semibold">{days}</span> 天。
+          </>
+        )}
+      </span>
+      {expired && (
+        <Button variant="outline" size="sm" onClick={onDismiss}>
+          确认
+        </Button>
+      )}
+    </li>
   );
 }

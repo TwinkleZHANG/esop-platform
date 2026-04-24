@@ -171,22 +171,24 @@ export function UserManagementClient() {
                       <StatusBadge tone="danger">离职</StatusBadge>
                     )}
                   </TableCell>
-                  <TableCell className="space-x-3">
-                    <button
+                  <TableCell className="space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => setEditTarget(u)}
-                      className="text-sm text-primary hover:underline"
                     >
                       编辑
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => {
                         setResetTarget(u);
                         setResetResult(null);
                       }}
-                      className="text-sm text-primary hover:underline"
                     >
                       重置密码
-                    </button>
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))
