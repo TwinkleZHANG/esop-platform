@@ -1,6 +1,5 @@
 import {
   OperationTarget,
-  PlanType,
   TaxEventStatus,
   TaxEventType,
   VestingRecordStatus,
@@ -95,9 +94,14 @@ export async function PATCH(
   }
 
   const operator = session.user.name ?? session.user.email ?? "系统";
-  void PlanType; // enum 在 schema 中使用
 
-  await prisma.$transaction(async (tx) => {
+  // RSU 归属税务必须关联一条归属记录（由 cron 生成时写入）；否则拒绝
+  if (t.eventType === TaxEventType.VESTING_TAX && !t.vestingRecordId) {
+    return fail("数据异常：归属税务事件缺少 vestingRecordId，无法确认");
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
     // 1) 置为 CONFIRMED
     await tx.taxEvent.update({
       where: { id: t.id },
@@ -232,7 +236,13 @@ export async function PATCH(
         tx
       );
     }
-  });
+    });
+  } catch (e) {
+    return fail(
+      e instanceof Error ? e.message : "确认税务事件失败",
+      500
+    );
+  }
 
   return ok({ id: t.id, status: TaxEventStatus.CONFIRMED });
 }
