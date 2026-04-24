@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import {
+  decimalLike,
   fail,
   isErrorResponse,
   ok,
@@ -13,7 +14,7 @@ import {
 
 const createSchema = z.object({
   valuationDate: z.string().min(1),
-  fmv: z.union([z.string(), z.number()]),
+  fmv: decimalLike,
   source: z.string().optional().nullable(),
   description: z.string().optional().nullable(),
 });

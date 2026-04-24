@@ -9,6 +9,7 @@ import {
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import {
+  decimalLike,
   fail,
   isErrorResponse,
   ok,
@@ -21,7 +22,7 @@ const createSchema = z.object({
   grantId: z.string().min(1),
   requestType: z.enum(["EXERCISE", "TRANSFER", "SELL", "BUYBACK", "REDEEM"]),
   requestTarget: z.enum(["SHARES", "OPTIONS"]).optional(),
-  quantity: z.union([z.string(), z.number()]),
+  quantity: decimalLike,
 });
 
 /**

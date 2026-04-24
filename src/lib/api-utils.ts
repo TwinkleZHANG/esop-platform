@@ -1,7 +1,20 @@
 import { NextResponse } from "next/server";
 import { getServerSession, type Session } from "next-auth";
+import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { hasPermission, type Permission } from "@/lib/permissions";
+
+/**
+ * 约束可被 Prisma.Decimal 安全解析的数值字段：接受 number 或匹配 ^\d+(\.\d+)?$ 的字符串。
+ * 避免 new Prisma.Decimal(invalidString) 抛未捕获的运行时异常。
+ */
+export const decimalLike = z.union([
+  z.number().refine((n) => Number.isFinite(n), "数字格式错误"),
+  z
+    .string()
+    .trim()
+    .regex(/^-?\d+(\.\d+)?$/, "数字格式错误"),
+]);
 
 // ========== 统一响应 ==========
 

@@ -8,6 +8,7 @@ import {
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import {
+  decimalLike,
   fail,
   isErrorResponse,
   ok,
@@ -24,8 +25,8 @@ const createSchema = z.object({
   holdingEntityId: z.string().optional().nullable(),
   grantDate: z.string().min(1, "授予日期必填"),
   vestingStartDate: z.string().optional().nullable(),
-  totalQuantity: z.union([z.string(), z.number()]),
-  strikePrice: z.union([z.string(), z.number()]).optional(),
+  totalQuantity: decimalLike,
+  strikePrice: decimalLike.optional(),
   agreementId: z.string().optional().nullable(),
   vestingYears: z.number().int().positive(),
   cliffMonths: z.number().int().min(0),

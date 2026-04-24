@@ -2,6 +2,7 @@ import { PlanStatus, PlanType, Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import {
+  decimalLike,
   fail,
   isErrorResponse,
   ok,
@@ -20,7 +21,7 @@ const createPlanSchema = z
     type: z.enum(["RSU", "OPTION"]),
     jurisdiction: z.enum(["内地", "香港", "海外"]),
     deliveryMethods: z.array(z.enum(RSU_DELIVERY)).optional(),
-    poolSize: z.union([z.string(), z.number()]),
+    poolSize: decimalLike,
     effectiveDate: z.string().min(1),
     boardResolutionId: z.string().optional().nullable(),
     notes: z.string().optional().nullable(),
