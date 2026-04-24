@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import type {
@@ -23,6 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { BackToListButton } from "@/components/back-to-list-button";
 import { WindowDaysPicker } from "@/components/window-days-picker";
 import {
   TAX_EVENT_STATUS_LABEL,
@@ -192,12 +192,7 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
     <div className="min-w-0 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-3">
-          <Link
-            href="/admin/grants"
-            className="text-sm text-muted-foreground hover:underline"
-          >
-            ← 返回列表
-          </Link>
+          <BackToListButton />
           <h1 className="min-w-0 max-w-full break-words text-xl font-semibold">
             {grant.user.name} · {grant.plan.title}
           </h1>

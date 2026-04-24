@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
+import { BackToListButton } from "@/components/back-to-list-button";
 import {
   GRANT_STATUS_LABEL,
   GRANT_STATUS_TONE,
@@ -84,12 +85,7 @@ export function EmployeeAssetDetailClient({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
-        <Link
-          href="/admin/assets"
-          className="text-sm text-muted-foreground hover:underline"
-        >
-          ← 返回列表
-        </Link>
+        <BackToListButton />
         <h1 className="text-xl font-semibold">{data.user.name} · 资产详情</h1>
         {data.user.employmentStatus === "在职" ? (
           <StatusBadge tone="success">在职</StatusBadge>

@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import type { HoldingEntity } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
+import { BackToListButton } from "@/components/back-to-list-button";
 import { hasPermission } from "@/lib/permissions";
 import {
   EntityFormDialog,
@@ -85,12 +85,7 @@ export function EntityDetailClient({ entityId }: { entityId: string }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-3">
-          <Link
-            href="/admin/entities"
-            className="text-sm text-muted-foreground hover:underline"
-          >
-            ← 返回列表
-          </Link>
+          <BackToListButton />
           <h1 className="min-w-0 max-w-full break-words text-xl font-semibold">
             {entity.name}
           </h1>

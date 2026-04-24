@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import type { Jurisdiction } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
+import { BackToListButton } from "@/components/back-to-list-button";
 import { hasPermission } from "@/lib/permissions";
 import { JURISDICTION_LABEL } from "@/lib/i18n";
 import {
@@ -94,12 +94,7 @@ export function EmployeeDetailClient({ userId }: { userId: string }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link
-            href="/admin/employees"
-            className="text-sm text-muted-foreground hover:underline"
-          >
-            ← 返回列表
-          </Link>
+          <BackToListButton />
           <h1 className="text-xl font-semibold">{user.name}</h1>
           {user.employmentStatus === "在职" ? (
             <StatusBadge tone="success">在职</StatusBadge>
