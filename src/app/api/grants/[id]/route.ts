@@ -57,7 +57,10 @@ export async function GET(
       holdingEntity: { select: { id: true, name: true } },
       vestingRecords: { orderBy: { vestingDate: "asc" } },
       taxEvents: { orderBy: { eventDate: "desc" } },
-      operationRequests: { orderBy: { submitDate: "desc" } },
+      operationRequests: {
+        include: { approver: { select: { id: true, name: true } } },
+        orderBy: { submitDate: "desc" },
+      },
       statusLogs: { orderBy: { timestamp: "desc" } },
     },
   });

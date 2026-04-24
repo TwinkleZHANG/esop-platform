@@ -15,11 +15,11 @@ export function Pagination({ page, pageSize, total, onPageChange }: Props) {
   const end = Math.min(page * pageSize, total);
 
   return (
-    <div className="flex items-center justify-between text-sm">
-      <div className="text-muted-foreground">
-        共 {total} 条，第 {start}-{end} 条
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-sm">
+      <div className="whitespace-nowrap text-muted-foreground">
+        共 {total} 条 · 第 {start}-{end} 条
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 whitespace-nowrap">
         <Button
           variant="outline"
           size="sm"

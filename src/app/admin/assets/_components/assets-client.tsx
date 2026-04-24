@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import type { PlanType } from "@prisma/client";
 import { Button } from "@/components/ui/button";
@@ -42,9 +43,23 @@ export function AssetsClient() {
   const { data: session } = useSession();
   const canExport = hasPermission(session?.user?.role, "asset.export");
 
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("ALL");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const [search, setSearch] = useState(searchParams.get("search") ?? "");
+  const [status, setStatus] = useState(searchParams.get("status") ?? "ALL");
   const debouncedSearch = useDebouncedValue(search, 300);
+
+  useEffect(() => {
+    const qs = new URLSearchParams();
+    if (search) qs.set("search", search);
+    if (status && status !== "ALL") qs.set("status", status);
+    const query = qs.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, {
+      scroll: false,
+    });
+  }, [search, status, pathname, router]);
 
   const [data, setData] = useState<Data>({ items: [], total: 0, valuation: null });
   const [loading, setLoading] = useState(false);

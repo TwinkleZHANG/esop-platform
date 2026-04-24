@@ -91,6 +91,7 @@ interface GrantDetail {
     submitDate: string;
     approveDate: string | null;
     approverNotes: string | null;
+    approver: { id: string; name: string } | null;
   }[];
   statusLogs: {
     id: string;
@@ -428,14 +429,19 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
         ) : (
           <ul className="space-y-1 text-sm">
             {logs.map((l) => (
-              <li key={l.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <li
+                key={l.id}
+                className="flex items-center gap-x-3 whitespace-nowrap"
+              >
                 <span className="text-muted-foreground">
                   {l.timestampDisplay}
                 </span>
                 <span>
                   {l.fromStatus} → {l.toStatus}
                 </span>
-                <span className="text-muted-foreground">by {l.operatorName}</span>
+                <span className="text-muted-foreground">
+                  by {l.operatorName}
+                </span>
                 {l.legalDocument && (
                   <span className="text-xs text-muted-foreground">
                     · {l.legalDocument}
@@ -460,6 +466,7 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
                 <TableHead>数量</TableHead>
                 <TableHead>提交时间</TableHead>
                 <TableHead>状态</TableHead>
+                <TableHead>操作人</TableHead>
                 <TableHead>审批备注</TableHead>
                 <TableHead>操作</TableHead>
               </TableRow>
@@ -478,6 +485,11 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
                     {new Date(r.submitDate).toLocaleDateString("zh-CN")}
                   </TableCell>
                   <TableCell>{r.status}</TableCell>
+                  <TableCell>
+                    {r.status === "PENDING"
+                      ? "-"
+                      : r.approver?.name ?? "-"}
+                  </TableCell>
                   <TableCell>{r.approverNotes ?? "-"}</TableCell>
                   <TableCell>
                     {canApprove && r.status === "PENDING" && (

@@ -38,14 +38,14 @@ export function SearchToolbar({
   right,
 }: Props) {
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
       {search && (
         <Input
           type="search"
           value={search.value}
           onChange={(e) => search.onChange(e.target.value)}
           placeholder={search.placeholder}
-          className="w-64"
+          className="w-full sm:w-64"
         />
       )}
       {filters.map((f) => (
@@ -54,7 +54,7 @@ export function SearchToolbar({
           value={f.value}
           onChange={f.onChange}
           options={f.options}
-          className="w-40"
+          className="w-full sm:w-40"
         />
       ))}
       {dateRange && (
@@ -65,7 +65,7 @@ export function SearchToolbar({
           label={dateRange.label}
         />
       )}
-      {right && <div className="ml-auto">{right}</div>}
+      {right && <div className="sm:ml-auto">{right}</div>}
     </div>
   );
 }

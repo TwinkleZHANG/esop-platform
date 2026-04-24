@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,9 +34,16 @@ export function ValuationsClient() {
   const role = session?.user?.role;
   const canManage = hasPermission(role, "valuation.create");
 
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [page, setPage] = useState(1);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const [from, setFrom] = useState(searchParams.get("from") ?? "");
+  const [to, setTo] = useState(searchParams.get("to") ?? "");
+  const [page, setPage] = useState(
+    Number(searchParams.get("page") ?? "1") || 1
+  );
+  const firstRun = useRef(true);
   const [data, setData] = useState<{
     items: Row[];
     total: number;
@@ -68,8 +76,23 @@ export function ValuationsClient() {
   }, [load]);
 
   useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false;
+      return;
+    }
     setPage(1);
   }, [from, to]);
+
+  useEffect(() => {
+    const qs = new URLSearchParams();
+    if (from) qs.set("from", from);
+    if (to) qs.set("to", to);
+    if (page > 1) qs.set("page", String(page));
+    const query = qs.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, {
+      scroll: false,
+    });
+  }, [from, to, page, pathname, router]);
 
   async function createValuation(v: ValuationFormValue) {
     const res = await fetch("/api/valuations", {

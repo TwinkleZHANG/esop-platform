@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { UserRole } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -50,12 +51,21 @@ interface UserRow {
 }
 
 export function UserManagementClient() {
-  const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("ALL");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [page, setPage] = useState(1);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const [search, setSearch] = useState(searchParams.get("search") ?? "");
+  const [roleFilter, setRoleFilter] = useState(
+    searchParams.get("role") ?? "ALL"
+  );
+  const [from, setFrom] = useState(searchParams.get("from") ?? "");
+  const [to, setTo] = useState(searchParams.get("to") ?? "");
+  const [page, setPage] = useState(
+    Number(searchParams.get("page") ?? "1") || 1
+  );
   const debouncedSearch = useDebouncedValue(search, 300);
+  const firstRun = useRef(true);
 
   const [data, setData] = useState<{
     items: UserRow[];
@@ -87,8 +97,25 @@ export function UserManagementClient() {
   }, [load]);
 
   useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false;
+      return;
+    }
     setPage(1);
   }, [debouncedSearch, roleFilter, from, to]);
+
+  useEffect(() => {
+    const qs = new URLSearchParams();
+    if (search) qs.set("search", search);
+    if (roleFilter && roleFilter !== "ALL") qs.set("role", roleFilter);
+    if (from) qs.set("from", from);
+    if (to) qs.set("to", to);
+    if (page > 1) qs.set("page", String(page));
+    const query = qs.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, {
+      scroll: false,
+    });
+  }, [search, roleFilter, from, to, page, pathname, router]);
 
   return (
     <>

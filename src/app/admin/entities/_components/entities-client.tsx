@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import type { HoldingEntity } from "@prisma/client";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -23,6 +25,7 @@ import {
   type EntityFormValue,
   TYPE_OPTIONS,
 } from "./entity-form-dialog";
+// 点击"查看"进入 /admin/entities/[id] 详情页（只读），详情页按钮进入编辑 dialog
 
 const TYPE_LABEL = Object.fromEntries(
   TYPE_OPTIONS.map((o) => [o.value, o.label])
@@ -33,12 +36,21 @@ export function EntitiesClient() {
   const role = session?.user?.role;
   const canCreate = hasPermission(role, "holdingEntity.create");
 
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<string>("ALL");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [page, setPage] = useState(1);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const [search, setSearch] = useState(searchParams.get("search") ?? "");
+  const [status, setStatus] = useState<string>(
+    searchParams.get("status") ?? "ALL"
+  );
+  const [from, setFrom] = useState(searchParams.get("from") ?? "");
+  const [to, setTo] = useState(searchParams.get("to") ?? "");
+  const [page, setPage] = useState(
+    Number(searchParams.get("page") ?? "1") || 1
+  );
   const debouncedSearch = useDebouncedValue(search, 300);
+  const firstRun = useRef(true);
 
   const [data, setData] = useState<{
     items: HoldingEntity[];
@@ -47,7 +59,6 @@ export function EntitiesClient() {
   }>({ items: [], total: 0, pageSize: 10 });
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<HoldingEntity | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -68,8 +79,25 @@ export function EntitiesClient() {
   }, [load]);
 
   useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false;
+      return;
+    }
     setPage(1);
   }, [debouncedSearch, status, from, to]);
+
+  useEffect(() => {
+    const qs = new URLSearchParams();
+    if (search) qs.set("search", search);
+    if (status && status !== "ALL") qs.set("status", status);
+    if (from) qs.set("from", from);
+    if (to) qs.set("to", to);
+    if (page > 1) qs.set("page", String(page));
+    const query = qs.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, {
+      scroll: false,
+    });
+  }, [search, status, from, to, page, pathname, router]);
 
   async function createEntity(v: EntityFormValue) {
     const res = await fetch("/api/entities", {
@@ -91,47 +119,6 @@ export function EntitiesClient() {
     const json = await res.json();
     if (!json.success) throw new Error(json.error ?? "创建失败");
     await load();
-  }
-
-  async function updateEntity(v: EntityFormValue) {
-    if (!editTarget) return;
-    const res = await fetch(`/api/entities/${editTarget.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: v.name,
-        type: v.type,
-        registrationNo: v.registrationNo,
-        address: v.address || null,
-        establishedAt: v.establishedAt || null,
-        legalRep: v.legalRep || null,
-        lpAccount: v.lpAccount || null,
-        taxJurisdiction: v.taxJurisdiction,
-        notes: v.notes || null,
-        status: v.status,
-      }),
-    });
-    const json = await res.json();
-    if (!json.success) throw new Error(json.error ?? "保存失败");
-    await load();
-  }
-
-  function toFormValue(e: HoldingEntity): EntityFormValue {
-    return {
-      name: e.name,
-      entityCode: e.entityCode,
-      type: e.type,
-      registrationNo: e.registrationNo,
-      address: e.address ?? "",
-      establishedAt: e.establishedAt
-        ? new Date(e.establishedAt).toISOString().slice(0, 10)
-        : "",
-      legalRep: e.legalRep ?? "",
-      lpAccount: e.lpAccount ?? "",
-      taxJurisdiction: e.taxJurisdiction as "内地" | "香港" | "海外",
-      notes: e.notes ?? "",
-      status: e.status,
-    };
   }
 
   return (
@@ -226,13 +213,15 @@ export function EntitiesClient() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setEditTarget(e)}
+                    <Link
+                      href={`/admin/entities/${e.id}`}
+                      className={buttonVariants({
+                        variant: "outline",
+                        size: "sm",
+                      })}
                     >
                       查看
-                    </Button>
+                    </Link>
                   </TableCell>
                 </TableRow>
               ))
@@ -246,14 +235,6 @@ export function EntitiesClient() {
         onOpenChange={setDialogOpen}
         mode="create"
         onSubmit={createEntity}
-      />
-
-      <EntityFormDialog
-        open={!!editTarget}
-        onOpenChange={(v) => !v && setEditTarget(null)}
-        mode="edit"
-        initialValue={editTarget ? toFormValue(editTarget) : undefined}
-        onSubmit={updateEntity}
       />
     </>
   );

@@ -1128,7 +1128,8 @@ model User {
 
   employerEntities  EmployerEntity[]
   taxEvents         TaxEvent[]
-  operationRequests  OperationRequest[]
+  operationRequests  OperationRequest[] @relation("OperationRequestRequester")
+  approvedRequests   OperationRequest[] @relation("OperationRequestApprover")
 
   // 授予数：通过 grants 关联实时计算，不单独存储
   grants            Grant[]
@@ -1387,12 +1388,14 @@ model OperationRequest {
   status          OperationRequestStatus   @default(PENDING)
   submitDate      DateTime                @default(now())
   approveDate     DateTime?
+  approverId      String?                                 // 审批人 UserId（APPROVE/REJECT 时写入）
   approverNotes   String?                                 // 审批备注（通过或驳回原因）
   createdAt       DateTime                @default(now())
   updatedAt       DateTime                @updatedAt
 
   grant           Grant                   @relation(fields: [grantId], references: [id])
-  user            User                    @relation(fields: [userId], references: [id])
+  user            User                    @relation("OperationRequestRequester", fields: [userId], references: [id])
+  approver        User?                   @relation("OperationRequestApprover", fields: [approverId], references: [id])
   taxEvent        TaxEvent?                               // 审批通过后系统自动生成的税务事件
 
   @@map("operation_requests")

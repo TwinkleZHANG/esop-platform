@@ -13,6 +13,7 @@ import {
   isErrorResponse,
   ok,
   requirePermission,
+  requireSession,
 } from "@/lib/api-utils";
 import { getFMVForDate } from "@/lib/valuation";
 
@@ -35,6 +36,9 @@ export async function PATCH(
 ) {
   const guard = await requirePermission("operationRequest.approve");
   if (isErrorResponse(guard)) return guard;
+  const session = await requireSession();
+  if (isErrorResponse(session)) return session;
+  const approverId = session.user.id;
 
   const parsed = patchSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
@@ -57,6 +61,7 @@ export async function PATCH(
       data: {
         status: OperationRequestStatus.REJECTED,
         approveDate: new Date(),
+        approverId,
         approverNotes: d.approverNotes || null,
       },
     });
@@ -92,6 +97,7 @@ export async function PATCH(
       data: {
         status: OperationRequestStatus.APPROVED,
         approveDate: eventDate,
+        approverId,
         approverNotes: d.approverNotes || null,
       },
     });

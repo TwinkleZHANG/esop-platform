@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import type { GrantStatus } from "@prisma/client";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -55,14 +55,18 @@ export function GrantsClient() {
   const canCreate = hasPermission(role, "grant.create");
 
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("ALL");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState(searchParams.get("search") ?? "");
+  const [status, setStatus] = useState(searchParams.get("status") ?? "ALL");
+  const [from, setFrom] = useState(searchParams.get("from") ?? "");
+  const [to, setTo] = useState(searchParams.get("to") ?? "");
+  const [page, setPage] = useState(
+    Number(searchParams.get("page") ?? "1") || 1
+  );
   const debouncedSearch = useDebouncedValue(search, 300);
+  const firstRun = useRef(true);
 
   const [data, setData] = useState<Paged>({
     items: [],
@@ -112,8 +116,25 @@ export function GrantsClient() {
   }, [loadPending]);
 
   useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false;
+      return;
+    }
     setPage(1);
   }, [debouncedSearch, status, from, to]);
+
+  useEffect(() => {
+    const qs = new URLSearchParams();
+    if (search) qs.set("search", search);
+    if (status && status !== "ALL") qs.set("status", status);
+    if (from) qs.set("from", from);
+    if (to) qs.set("to", to);
+    if (page > 1) qs.set("page", String(page));
+    const query = qs.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, {
+      scroll: false,
+    });
+  }, [search, status, from, to, page, pathname, router]);
 
   useEffect(() => {
     if (searchParams.get("action") === "create" && canCreate) {
@@ -294,12 +315,12 @@ function PendingBanner({
 }) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   return (
-    <div className="border-b border-border bg-amber-50/60 p-3">
-      <div className="flex items-center justify-between">
+    <div className="overflow-x-auto border-b border-border bg-amber-50/60 p-3">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <div className="text-sm font-medium text-amber-800">
           待审批申请提醒（共 {total} 条）
         </div>
-        <div className="flex items-center gap-2 text-xs">
+        <div className="flex items-center gap-2 whitespace-nowrap text-xs">
           <Button
             variant="outline"
             size="sm"
@@ -323,7 +344,7 @@ function PendingBanner({
       </div>
       <ul className="mt-2 space-y-1">
         {rows.map((g) => (
-          <li key={g.id} className="text-sm">
+          <li key={g.id} className="whitespace-nowrap text-sm">
             <Link
               href={`/admin/grants/${g.id}`}
               className="text-primary hover:underline"

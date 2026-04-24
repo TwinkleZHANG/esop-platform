@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -38,14 +38,18 @@ export function PlansClient() {
   const canCreate = hasPermission(role, "plan.create");
 
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const [search, setSearch] = useState("");
-  const [type, setType] = useState<string>("ALL");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState(searchParams.get("search") ?? "");
+  const [type, setType] = useState<string>(searchParams.get("type") ?? "ALL");
+  const [from, setFrom] = useState(searchParams.get("from") ?? "");
+  const [to, setTo] = useState(searchParams.get("to") ?? "");
+  const [page, setPage] = useState(
+    Number(searchParams.get("page") ?? "1") || 1
+  );
   const debouncedSearch = useDebouncedValue(search, 300);
+  const firstRun = useRef(true);
 
   const [data, setData] = useState<{
     items: PlanRow[];
@@ -74,8 +78,26 @@ export function PlansClient() {
   }, [load]);
 
   useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false;
+      return;
+    }
     setPage(1);
   }, [debouncedSearch, type, from, to]);
+
+  // URL 持久化：把筛选状态同步写到 query
+  useEffect(() => {
+    const qs = new URLSearchParams();
+    if (search) qs.set("search", search);
+    if (type && type !== "ALL") qs.set("type", type);
+    if (from) qs.set("from", from);
+    if (to) qs.set("to", to);
+    if (page > 1) qs.set("page", String(page));
+    const query = qs.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, {
+      scroll: false,
+    });
+  }, [search, type, from, to, page, pathname, router]);
 
   // Dashboard 快捷操作：?action=create 自动打开创建弹窗
   useEffect(() => {
