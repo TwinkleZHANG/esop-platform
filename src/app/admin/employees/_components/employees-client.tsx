@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import type { Jurisdiction } from "@prisma/client";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -226,10 +227,9 @@ export function EmployeesClient() {
                   <TableCell>
                     <Link
                       href={`/admin/employees/${u.id}`}
-                      className={buttonVariants({
-                        variant: "outline",
-                        size: "sm",
-                      })}
+                      className={cn(
+                        buttonVariants({ variant: "outline", size: "sm" })
+                      )}
                     >
                       查看
                     </Link>

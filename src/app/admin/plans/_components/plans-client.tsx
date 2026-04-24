@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -228,10 +229,9 @@ export function PlansClient() {
                   <TableCell>
                     <Link
                       href={`/admin/plans/${p.id}`}
-                      className={buttonVariants({
-                        variant: "outline",
-                        size: "sm",
-                      })}
+                      className={cn(
+                        buttonVariants({ variant: "outline", size: "sm" })
+                      )}
                     >
                       查看
                     </Link>

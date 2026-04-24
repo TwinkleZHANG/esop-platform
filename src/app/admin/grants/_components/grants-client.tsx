@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import type { GrantStatus } from "@prisma/client";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -276,10 +277,9 @@ export function GrantsClient() {
                   <TableCell>
                     <Link
                       href={`/admin/grants/${g.id}`}
-                      className={buttonVariants({
-                        variant: "outline",
-                        size: "sm",
-                      })}
+                      className={cn(
+                        buttonVariants({ variant: "outline", size: "sm" })
+                      )}
                     >
                       查看
                     </Link>

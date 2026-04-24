@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import type { HoldingEntity } from "@prisma/client";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -215,10 +216,9 @@ export function EntitiesClient() {
                   <TableCell>
                     <Link
                       href={`/admin/entities/${e.id}`}
-                      className={buttonVariants({
-                        variant: "outline",
-                        size: "sm",
-                      })}
+                      className={cn(
+                        buttonVariants({ variant: "outline", size: "sm" })
+                      )}
                     >
                       查看
                     </Link>
