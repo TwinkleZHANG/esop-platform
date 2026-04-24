@@ -40,7 +40,16 @@ export async function POST(req: Request) {
     valuationMissing: 0,
     grantsAdvanced: 0,
     closingExpired: 0,
+    errors: [] as { phase: string; grantId: string; message: string }[],
   };
+
+  function recordError(phase: string, grantId: string, e: unknown) {
+    result.errors.push({
+      phase,
+      grantId,
+      message: e instanceof Error ? e.message : String(e),
+    });
+  }
 
   // ========== 1) Vesting 检查 ==========
   const due = await prisma.vestingRecord.findMany({
@@ -65,57 +74,74 @@ export async function POST(req: Request) {
     const grant = records[0].grant;
     const isOption = grant.plan.type === PlanType.OPTION;
 
-    await prisma.$transaction(async (tx) => {
-      let optionsDelta = new Prisma.Decimal(0);
-
-      for (const rec of records) {
-        await tx.vestingRecord.update({
-          where: { id: rec.id },
-          data: {
-            status: VestingRecordStatus.VESTED,
-            actualVestDate: now,
-            exercisableOptions: isOption ? rec.quantity : new Prisma.Decimal(0),
-          },
-        });
-        result.vestedRecords += 1;
-
-        if (isOption) {
-          optionsDelta = optionsDelta.add(rec.quantity);
-        } else {
-          // RSU：生成归属税务事件
-          const fmv = await getFMVForDate(rec.vestingDate);
-          if (!fmv) {
-            result.valuationMissing += 1;
-            continue;
-          }
-          await tx.taxEvent.create({
-            data: {
-              grantId: grant.id,
-              userId: grant.userId,
-              eventType: TaxEventType.VESTING_TAX,
-              operationType: "归属",
-              operationTarget: null,
-              quantity: rec.quantity,
-              eventDate: now,
-              fmvAtEvent: fmv.fmv,
-              valuationId: fmv.id,
-              vestingRecordId: rec.id,
-              strikePrice: new Prisma.Decimal(0),
-              status: TaxEventStatus.PENDING_PAYMENT,
-              operationRequestId: null,
-            },
-          });
-          result.rsuTaxEventsCreated += 1;
+    try {
+      // 提前拉 FMV（事务外，不让外部依赖卡死事务）
+      const fmvByRecord = new Map<
+        string,
+        { id: string; fmv: Prisma.Decimal } | null
+      >();
+      if (!isOption) {
+        for (const rec of records) {
+          fmvByRecord.set(rec.id, await getFMVForDate(rec.vestingDate));
         }
       }
 
-      if (isOption && optionsDelta.gt(0)) {
-        await tx.grant.update({
-          where: { id: grant.id },
-          data: { operableOptions: { increment: optionsDelta } },
-        });
-      }
-    });
+      await prisma.$transaction(async (tx) => {
+        let optionsDelta = new Prisma.Decimal(0);
+
+        for (const rec of records) {
+          await tx.vestingRecord.update({
+            where: { id: rec.id },
+            data: {
+              status: VestingRecordStatus.VESTED,
+              actualVestDate: now,
+              exercisableOptions: isOption
+                ? rec.quantity
+                : new Prisma.Decimal(0),
+            },
+          });
+          result.vestedRecords += 1;
+
+          if (isOption) {
+            optionsDelta = optionsDelta.add(rec.quantity);
+          } else {
+            // RSU：生成归属税务事件（FMV 已预取）
+            const fmv = fmvByRecord.get(rec.id);
+            if (!fmv) {
+              result.valuationMissing += 1;
+              continue;
+            }
+            await tx.taxEvent.create({
+              data: {
+                grantId: grant.id,
+                userId: grant.userId,
+                eventType: TaxEventType.VESTING_TAX,
+                operationType: "归属",
+                operationTarget: null,
+                quantity: rec.quantity,
+                eventDate: now,
+                fmvAtEvent: fmv.fmv,
+                valuationId: fmv.id,
+                vestingRecordId: rec.id,
+                strikePrice: new Prisma.Decimal(0),
+                status: TaxEventStatus.PENDING_PAYMENT,
+                operationRequestId: null,
+              },
+            });
+            result.rsuTaxEventsCreated += 1;
+          }
+        }
+
+        if (isOption && optionsDelta.gt(0)) {
+          await tx.grant.update({
+            where: { id: grant.id },
+            data: { operableOptions: { increment: optionsDelta } },
+          });
+        }
+      });
+    } catch (e) {
+      recordError("vesting", grantId, e);
+    }
   }
 
   // ========== 2) Grant 状态推进 ==========
@@ -143,14 +169,18 @@ export async function POST(req: Request) {
       g.vestingRecords
     );
     if (target !== g.status) {
-      await prisma.$transaction(async (tx) => {
-        await tx.grant.update({
-          where: { id: g.id },
-          data: { status: target },
+      try {
+        await prisma.$transaction(async (tx) => {
+          await tx.grant.update({
+            where: { id: g.id },
+            data: { status: target },
+          });
+          await createStatusLog(g.id, g.status, target, OPERATOR, null, tx);
         });
-        await createStatusLog(g.id, g.status, target, OPERATOR, null, tx);
-      });
-      result.grantsAdvanced += 1;
+        result.grantsAdvanced += 1;
+      } catch (e) {
+        recordError("grantAdvance", g.id, e);
+      }
     }
   }
 
@@ -164,46 +194,50 @@ export async function POST(req: Request) {
   });
 
   for (const g of expiring) {
-    await prisma.$transaction(async (tx) => {
-      // 释放未行权额度：operableOptions 清零
-      await tx.grant.update({
-        where: { id: g.id },
-        data: {
-          status: GrantStatus.CLOSED,
-          operableOptions: new Prisma.Decimal(0),
-        },
-      });
-      // VESTED / PARTIALLY_SETTLED 归属记录 → CLOSED
-      await tx.vestingRecord.updateMany({
-        where: {
-          grantId: g.id,
-          status: {
-            in: [
-              VestingRecordStatus.VESTED,
-              VestingRecordStatus.PARTIALLY_SETTLED,
-            ],
+    try {
+      await prisma.$transaction(async (tx) => {
+        // 释放未行权额度：operableOptions 清零
+        await tx.grant.update({
+          where: { id: g.id },
+          data: {
+            status: GrantStatus.CLOSED,
+            operableOptions: new Prisma.Decimal(0),
           },
-        },
-        data: { status: VestingRecordStatus.CLOSED },
+        });
+        // VESTED / PARTIALLY_SETTLED 归属记录 → CLOSED
+        await tx.vestingRecord.updateMany({
+          where: {
+            grantId: g.id,
+            status: {
+              in: [
+                VestingRecordStatus.VESTED,
+                VestingRecordStatus.PARTIALLY_SETTLED,
+              ],
+            },
+          },
+          data: { status: VestingRecordStatus.CLOSED },
+        });
+        // 待审批的行权申请 → CLOSED
+        await tx.operationRequest.updateMany({
+          where: {
+            grantId: g.id,
+            status: OperationRequestStatus.PENDING,
+          },
+          data: { status: OperationRequestStatus.CLOSED },
+        });
+        await createStatusLog(
+          g.id,
+          GrantStatus.CLOSING,
+          GrantStatus.CLOSED,
+          OPERATOR,
+          "行权窗口期到期",
+          tx
+        );
       });
-      // 待审批的行权申请 → CLOSED
-      await tx.operationRequest.updateMany({
-        where: {
-          grantId: g.id,
-          status: OperationRequestStatus.PENDING,
-        },
-        data: { status: OperationRequestStatus.CLOSED },
-      });
-      await createStatusLog(
-        g.id,
-        GrantStatus.CLOSING,
-        GrantStatus.CLOSED,
-        OPERATOR,
-        "行权窗口期到期",
-        tx
-      );
-    });
-    result.closingExpired += 1;
+      result.closingExpired += 1;
+    } catch (e) {
+      recordError("closingExpire", g.id, e);
+    }
   }
 
   return ok(result);
