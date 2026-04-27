@@ -92,6 +92,10 @@ export async function PATCH(
   if (t.status !== TaxEventStatus.RECEIPT_UPLOADED) {
     return fail("仅「已上传凭证」状态可确认");
   }
+  // Maker-Checker：不能确认自己的税务事件
+  if (t.userId === session.user.id) {
+    return fail("不能确认自己的税务事件", 403);
+  }
 
   const operator = session.user.name ?? session.user.email ?? "系统";
 

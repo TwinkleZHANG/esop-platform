@@ -212,6 +212,10 @@ export async function PATCH(
 
   // Draft → Granted：补协议 ID + 生成归属记录
   if (targetStatus === GrantStatus.GRANTED) {
+    // Maker-Checker：不能审批自己的授予
+    if (grant.userId === session.user.id) {
+      return fail("不能审批自己的授予", 403);
+    }
     const finalAgreementId = d.agreementId ?? grant.agreementId;
     if (!finalAgreementId || !finalAgreementId.trim()) {
       return fail("进入 Granted 状态前必须填写协议 ID");

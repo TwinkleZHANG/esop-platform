@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import type {
   OperationTarget,
   TaxEventStatus,
@@ -60,6 +61,8 @@ export function TaxEventDetailDialog({
   canConfirm,
   onConfirmed,
 }: Props) {
+  const { data: session } = useSession();
+  const sessionUserId = session?.user?.id;
   const [detail, setDetail] = useState<Detail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -197,11 +200,20 @@ export function TaxEventDetailDialog({
           <Button variant="outline" onClick={onClose} disabled={busy}>
             关闭
           </Button>
-          {canConfirm && detail?.status === "RECEIPT_UPLOADED" && (
-            <Button onClick={confirm} disabled={busy}>
-              {busy ? "确认中..." : "确认"}
-            </Button>
-          )}
+          {canConfirm &&
+            detail?.status === "RECEIPT_UPLOADED" &&
+            detail.user.id !== sessionUserId && (
+              <Button onClick={confirm} disabled={busy}>
+                {busy ? "确认中..." : "确认"}
+              </Button>
+            )}
+          {canConfirm &&
+            detail?.status === "RECEIPT_UPLOADED" &&
+            detail.user.id === sessionUserId && (
+              <span className="self-center text-sm text-muted-foreground">
+                不能审批自己的记录
+              </span>
+            )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

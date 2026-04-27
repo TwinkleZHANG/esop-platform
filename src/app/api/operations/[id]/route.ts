@@ -54,6 +54,10 @@ export async function PATCH(
   if (reqRow.status !== OperationRequestStatus.PENDING) {
     return fail("仅待审批的申请可审批");
   }
+  // Maker-Checker：不能审批自己的申请
+  if (reqRow.userId === approverId) {
+    return fail("不能审批自己的申请", 403);
+  }
 
   if (d.decision === "REJECT") {
     const updated = await prisma.operationRequest.update({

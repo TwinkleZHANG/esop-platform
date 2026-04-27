@@ -137,6 +137,7 @@ const VESTING_STATUS_LABEL: Record<VestingRecordStatus, string> = {
 export function GrantDetailClient({ grantId }: { grantId: string }) {
   const { data: session } = useSession();
   const role = session?.user?.role;
+  const sessionUserId = session?.user?.id;
   const canEdit = hasPermission(role, "grant.create");
   const canAdvance = hasPermission(role, "grant.advance");
   const canClose = hasPermission(role, "grant.close");
@@ -180,6 +181,8 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
   const isOption = grant.plan.type === "OPTION";
   const isClosing = grant.status === "CLOSING";
   const isClosed = grant.status === "CLOSED";
+  // Maker-Checker：不能审批自己的授予/申请
+  const isSelfGrant = !!sessionUserId && sessionUserId === grant.user.id;
 
   const daysRemaining = (() => {
     if (!isClosing || !grant.exerciseWindowDeadline) return null;
@@ -206,8 +209,13 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
               编辑
             </Button>
           )}
-          {canAdvance && isDraft && (
+          {canAdvance && isDraft && !isSelfGrant && (
             <Button onClick={() => setAdvanceOpen(true)}>推进到已授予</Button>
+          )}
+          {canAdvance && isDraft && isSelfGrant && (
+            <span className="text-sm text-muted-foreground">
+              不能审批自己的记录
+            </span>
           )}
           {canClose && !isClosed && grant.status !== "CLOSING" && (
             <Button variant="outline" onClick={() => setCloseOpen(true)}>
@@ -487,10 +495,15 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
                   </TableCell>
                   <TableCell>{r.approverNotes ?? "-"}</TableCell>
                   <TableCell>
-                    {canApprove && r.status === "PENDING" && (
+                    {canApprove && r.status === "PENDING" && !isSelfGrant && (
                       <Button size="sm" onClick={() => setApprovalTarget(r)}>
                         审批
                       </Button>
+                    )}
+                    {canApprove && r.status === "PENDING" && isSelfGrant && (
+                      <span className="text-xs text-muted-foreground">
+                        不能审批自己的记录
+                      </span>
                     )}
                   </TableCell>
                 </TableRow>
