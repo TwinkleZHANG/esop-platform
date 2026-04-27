@@ -89,6 +89,7 @@ export async function GET(req: Request) {
     totalQuantity: g.totalQuantity.toFixed(0),
     strikePrice: g.strikePrice.toFixed(2),
     grantDate: g.grantDate,
+    vestingStartDate: g.vestingStartDate,
     status: g.status,
     operableShares: g.operableShares.toFixed(0),
     operableOptions: g.operableOptions.toFixed(0),

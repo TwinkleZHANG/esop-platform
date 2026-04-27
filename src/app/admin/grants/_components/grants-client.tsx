@@ -38,6 +38,7 @@ interface GrantRow {
   totalQuantity: string;
   strikePrice: string;
   grantDate: string;
+  vestingStartDate: string | null;
   status: GrantStatus;
   operableShares: string;
   operableOptions: string;
@@ -268,6 +269,7 @@ export function GrantsClient() {
               <TableHead>授予数量</TableHead>
               <TableHead>行权价</TableHead>
               <TableHead>授予日期</TableHead>
+              <TableHead>授予计划开始日期</TableHead>
               <TableHead>可操作股数</TableHead>
               <TableHead>可操作期权</TableHead>
               <TableHead>状态</TableHead>
@@ -277,13 +279,13 @@ export function GrantsClient() {
           <TableBody>
             {loading && data.items.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center text-muted-foreground">
+                <TableCell colSpan={11} className="text-center text-muted-foreground">
                   加载中...
                 </TableCell>
               </TableRow>
             ) : data.items.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center text-muted-foreground">
+                <TableCell colSpan={11} className="text-center text-muted-foreground">
                   暂无授予记录
                 </TableCell>
               </TableRow>
@@ -301,6 +303,11 @@ export function GrantsClient() {
                   <TableCell>{g.strikePrice}</TableCell>
                   <TableCell>
                     {new Date(g.grantDate).toLocaleDateString("zh-CN")}
+                  </TableCell>
+                  <TableCell>
+                    {g.vestingStartDate
+                      ? new Date(g.vestingStartDate).toLocaleDateString("zh-CN")
+                      : "-"}
                   </TableCell>
                   <TableCell>{g.operableShares}</TableCell>
                   <TableCell>
