@@ -92,11 +92,13 @@ export function EmployeeDetailClient({ userId }: { userId: string }) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+    <div className="min-w-0 space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
           <BackToListButton />
-          <h1 className="text-xl font-semibold">{user.name}</h1>
+          <h1 className="min-w-0 max-w-full break-words text-xl font-semibold">
+            {user.name}
+          </h1>
           {user.employmentStatus === "在职" ? (
             <StatusBadge tone="success">在职</StatusBadge>
           ) : (
@@ -110,7 +112,7 @@ export function EmployeeDetailClient({ userId }: { userId: string }) {
         )}
       </div>
 
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-4 rounded-lg border border-border bg-background p-6 text-sm">
+      <dl className="grid grid-cols-1 gap-x-6 gap-y-4 rounded-lg border border-border bg-background p-6 text-sm sm:grid-cols-2">
         <Field label="员工 ID" value={user.employeeId} />
         <Field label="邮箱" value={user.email} />
         <Field label="部门" value={user.department || "-"} />
@@ -174,9 +176,9 @@ export function EmployeeDetailClient({ userId }: { userId: string }) {
 
 function Field({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-1 font-medium">{value}</dd>
+      <dd className="mt-1 break-all font-medium">{value}</dd>
     </div>
   );
 }
