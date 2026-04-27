@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import type { Jurisdiction } from "@prisma/client";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
 import { BackToListButton } from "@/components/back-to-list-button";
+import { cn } from "@/lib/utils";
 import { hasPermission } from "@/lib/permissions";
 import { JURISDICTION_LABEL } from "@/lib/i18n";
 import {
@@ -138,14 +140,22 @@ export function EmployeeDetailClient({ userId }: { userId: string }) {
         ) : (
           <ul className="divide-y divide-border text-sm">
             {user.grants.map((g) => (
-              <li key={g.id} className="py-2 flex items-center justify-between">
-                <div>
-                  <div className="font-medium">{g.planTitle}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {g.planType} · 授予 {g.totalQuantity} ·{" "}
-                    {new Date(g.grantDate).toLocaleDateString("zh-CN")}
+              <li key={g.id} className="flex items-center justify-between gap-3 py-2">
+                <Link
+                  href={`/admin/grants/${g.id}`}
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "sm" }),
+                    "h-auto items-start whitespace-normal py-2 text-left"
+                  )}
+                >
+                  <div>
+                    <div className="font-medium">{g.planTitle}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {g.planType} · 授予 {g.totalQuantity} ·{" "}
+                      {new Date(g.grantDate).toLocaleDateString("zh-CN")}
+                    </div>
                   </div>
-                </div>
+                </Link>
                 <span className="text-xs text-muted-foreground">
                   {g.status}
                 </span>
