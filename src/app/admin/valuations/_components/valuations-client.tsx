@@ -223,31 +223,37 @@ export function ValuationsClient() {
         </Table>
       </ListPageShell>
 
-      <section className="mt-6">
+      <section className="mt-6 min-w-0">
         <h2 className="mb-2 text-sm font-semibold">操作记录</h2>
         {logs.length === 0 ? (
           <p className="text-sm text-muted-foreground">暂无操作记录</p>
         ) : (
-          <ul className="space-y-1 text-sm">
-            {logs.map((l) => {
-              const dateStr = new Date(l.valuationDate).toLocaleDateString(
-                "zh-CN"
-              );
-              const verb = l.action === "CREATED" ? "添加估值" : "删除估值";
-              return (
-                <li
-                  key={l.id}
-                  className="flex flex-wrap items-center gap-x-3 text-muted-foreground"
-                >
-                  <span>{l.timestampDisplay}</span>
-                  <span className="text-foreground">
-                    {verb}（FMV: {l.fmv} HKD, 日期: {dateStr}）
-                  </span>
-                  <span>by {l.operatorName}</span>
-                </li>
-              );
-            })}
-          </ul>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>时间</TableHead>
+                <TableHead>操作</TableHead>
+                <TableHead>估值日期</TableHead>
+                <TableHead>FMV（HKD）</TableHead>
+                <TableHead>操作人</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {logs.map((l) => (
+                <TableRow key={l.id}>
+                  <TableCell>{l.timestampDisplay}</TableCell>
+                  <TableCell>
+                    {l.action === "CREATED" ? "添加估值" : "删除估值"}
+                  </TableCell>
+                  <TableCell>
+                    {new Date(l.valuationDate).toLocaleDateString("zh-CN")}
+                  </TableCell>
+                  <TableCell className="font-mono">{l.fmv}</TableCell>
+                  <TableCell>{l.operatorName}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </section>
 
