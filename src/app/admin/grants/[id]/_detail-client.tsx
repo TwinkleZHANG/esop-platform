@@ -430,29 +430,28 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
         {logs.length === 0 ? (
           <p className="text-sm text-muted-foreground">暂无状态变更记录</p>
         ) : (
-          <ul className="space-y-1 text-sm">
-            {logs.map((l) => (
-              <li
-                key={l.id}
-                className="flex items-center gap-x-3 whitespace-nowrap"
-              >
-                <span className="text-muted-foreground">
-                  {l.timestampDisplay}
-                </span>
-                <span>
-                  {l.fromStatus} → {l.toStatus}
-                </span>
-                <span className="text-muted-foreground">
-                  by {l.operatorName}
-                </span>
-                {l.legalDocument && (
-                  <span className="text-xs text-muted-foreground">
-                    · {l.legalDocument}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>时间</TableHead>
+                <TableHead>变更前状态</TableHead>
+                <TableHead>变更后状态</TableHead>
+                <TableHead>操作人</TableHead>
+                <TableHead>备注</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {logs.map((l) => (
+                <TableRow key={l.id}>
+                  <TableCell>{l.timestampDisplay}</TableCell>
+                  <TableCell>{l.fromStatus}</TableCell>
+                  <TableCell>{l.toStatus}</TableCell>
+                  <TableCell>{l.operatorName}</TableCell>
+                  <TableCell>{l.legalDocument ?? "-"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </Section>
 
