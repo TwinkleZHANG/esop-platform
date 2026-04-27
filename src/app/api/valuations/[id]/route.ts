@@ -1,3 +1,4 @@
+import { ValuationLogAction } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   fail,
@@ -36,6 +37,19 @@ export async function DELETE(
     return fail("该估值记录已被引用，无法删除");
   }
 
-  await prisma.valuation.delete({ where: { id: v.id } });
+  await prisma.$transaction(async (tx) => {
+    // 先写日志（valuationId 仍存在，便于关联），再删；onDelete: SetNull 会自动清空 valuationId
+    await tx.valuationLog.create({
+      data: {
+        valuationId: v.id,
+        action: ValuationLogAction.DELETED,
+        fmv: v.fmv,
+        valuationDate: v.valuationDate,
+        operatorId: guard.user.id,
+        operatorName: guard.user.name ?? guard.user.email ?? "系统",
+      },
+    });
+    await tx.valuation.delete({ where: { id: v.id } });
+  });
   return ok({ deleted: true });
 }

@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, ValuationLogAction } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import {
@@ -65,13 +65,26 @@ export async function POST(req: Request) {
   const fmv = new Prisma.Decimal(d.fmv).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_EVEN);
   if (fmv.lte(0)) return fail("FMV 必须大于 0");
 
-  const created = await prisma.valuation.create({
-    data: {
-      valuationDate: date,
-      fmv,
-      source: d.source || null,
-      description: d.description || null,
-    },
+  const created = await prisma.$transaction(async (tx) => {
+    const v = await tx.valuation.create({
+      data: {
+        valuationDate: date,
+        fmv,
+        source: d.source || null,
+        description: d.description || null,
+      },
+    });
+    await tx.valuationLog.create({
+      data: {
+        valuationId: v.id,
+        action: ValuationLogAction.CREATED,
+        fmv: v.fmv,
+        valuationDate: v.valuationDate,
+        operatorId: guard.user.id,
+        operatorName: guard.user.name ?? guard.user.email ?? "系统",
+      },
+    });
+    return v;
   });
 
   return ok({ ...created, fmv: created.fmv.toFixed(2) });

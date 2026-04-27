@@ -141,8 +141,29 @@ model Valuation {
   createdAt       DateTime @default(now())
 
   taxEvents       TaxEvent[]
+  logs            ValuationLog[]
 
   @@map("valuations")
+}
+
+enum ValuationLogAction {
+  CREATED
+  DELETED
+}
+
+// 估值操作审计：删除时 valuation 关联可能为 null，因此存 fmv/valuationDate 快照。
+model ValuationLog {
+  id              String              @id @default(cuid())
+  valuationId     String?
+  valuation       Valuation?          @relation(fields: [valuationId], references: [id], onDelete: SetNull)
+  action          ValuationLogAction
+  fmv             Decimal
+  valuationDate   DateTime
+  operatorId      String
+  operatorName    String
+  timestamp       DateTime            @default(now())
+
+  @@map("valuation_logs")
 }
 
 // ========== 授予管理 ==========

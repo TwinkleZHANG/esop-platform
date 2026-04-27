@@ -29,6 +29,15 @@ interface Row {
   description: string | null;
 }
 
+interface LogRow {
+  id: string;
+  action: "CREATED" | "DELETED";
+  fmv: string;
+  valuationDate: string;
+  operatorName: string;
+  timestampDisplay: string;
+}
+
 export function ValuationsClient() {
   const { data: session } = useSession();
   const role = session?.user?.role;
@@ -53,6 +62,7 @@ export function ValuationsClient() {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const [hasGap, setHasGap] = useState(false);
+  const [logs, setLogs] = useState<LogRow[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -60,14 +70,17 @@ export function ValuationsClient() {
     qs.set("page", String(page));
     if (from) qs.set("from", from);
     if (to) qs.set("to", to);
-    const [listRes, badgesRes] = await Promise.all([
+    const [listRes, badgesRes, logsRes] = await Promise.all([
       fetch(`/api/valuations?${qs.toString()}`),
       fetch(`/api/sidebar-badges`),
+      fetch(`/api/valuations/logs`),
     ]);
     const listJson = await listRes.json();
     if (listJson.success) setData(listJson.data);
     const badgesJson = await badgesRes.json();
     if (badgesJson.success) setHasGap(badgesJson.data.valuations > 0);
+    const logsJson = await logsRes.json();
+    if (logsJson.success) setLogs(logsJson.data);
     setLoading(false);
   }, [page, from, to]);
 
@@ -209,6 +222,34 @@ export function ValuationsClient() {
           </TableBody>
         </Table>
       </ListPageShell>
+
+      <section className="mt-6">
+        <h2 className="mb-2 text-sm font-semibold">操作记录</h2>
+        {logs.length === 0 ? (
+          <p className="text-sm text-muted-foreground">暂无操作记录</p>
+        ) : (
+          <ul className="space-y-1 text-sm">
+            {logs.map((l) => {
+              const dateStr = new Date(l.valuationDate).toLocaleDateString(
+                "zh-CN"
+              );
+              const verb = l.action === "CREATED" ? "添加估值" : "删除估值";
+              return (
+                <li
+                  key={l.id}
+                  className="flex flex-wrap items-center gap-x-3 text-muted-foreground"
+                >
+                  <span>{l.timestampDisplay}</span>
+                  <span className="text-foreground">
+                    {verb}（FMV: {l.fmv} HKD, 日期: {dateStr}）
+                  </span>
+                  <span>by {l.operatorName}</span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
 
       <ValuationDialog
         open={dialogOpen}
