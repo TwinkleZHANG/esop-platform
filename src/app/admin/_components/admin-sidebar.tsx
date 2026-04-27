@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { useCallback, useEffect, useState } from "react";
-import { UserIcon } from "lucide-react";
+import { UserIcon, LogOutIcon } from "lucide-react";
 
 export interface NavItem {
   href: string;
@@ -82,6 +83,14 @@ export function AdminSidebar({
           <UserIcon className="size-4" />
           <span>切换到员工视图</span>
         </Link>
+        <button
+          type="button"
+          onClick={() => signOut({ callbackUrl: "/login" })}
+          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <LogOutIcon className="size-4" />
+          <span>退出登录</span>
+        </button>
       </div>
     </aside>
   );
