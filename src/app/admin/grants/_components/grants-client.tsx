@@ -54,6 +54,8 @@ export function GrantsClient() {
   const { data: session } = useSession();
   const role = session?.user?.role;
   const canCreate = hasPermission(role, "grant.create");
+  // 仅审批管理员/超管可见 Draft 提醒（与角标过滤一致）
+  const canAdvance = hasPermission(role, "grant.advance");
 
   const router = useRouter();
   const pathname = usePathname();
@@ -80,6 +82,12 @@ export function GrantsClient() {
     pageSize: 3,
   });
   const [pendingPage, setPendingPage] = useState(1);
+  const [draft, setDraft] = useState<Paged>({
+    items: [],
+    total: 0,
+    pageSize: 3,
+  });
+  const [draftPage, setDraftPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -108,6 +116,21 @@ export function GrantsClient() {
     if (json.success) setPending(json.data);
   }, [pendingPage]);
 
+  const loadDraft = useCallback(async () => {
+    if (!canAdvance) {
+      setDraft({ items: [], total: 0, pageSize: 3 });
+      return;
+    }
+    const qs = new URLSearchParams({
+      status: "DRAFT",
+      pageSize: "3",
+      page: String(draftPage),
+    });
+    const res = await fetch(`/api/grants?${qs.toString()}`);
+    const json = await res.json();
+    if (json.success) setDraft(json.data);
+  }, [draftPage, canAdvance]);
+
   useEffect(() => {
     void loadList();
   }, [loadList]);
@@ -115,6 +138,10 @@ export function GrantsClient() {
   useEffect(() => {
     void loadPending();
   }, [loadPending]);
+
+  useEffect(() => {
+    void loadDraft();
+  }, [loadDraft]);
 
   useEffect(() => {
     if (firstRun.current) {
@@ -164,7 +191,7 @@ export function GrantsClient() {
     });
     const json = await res.json();
     if (!json.success) throw new Error(json.error ?? "创建失败");
-    await Promise.all([loadList(), loadPending()]);
+    await Promise.all([loadList(), loadPending(), loadDraft()]);
   }
 
   return (
@@ -219,6 +246,16 @@ export function GrantsClient() {
             page={pendingPage}
             pageSize={pending.pageSize}
             onPageChange={setPendingPage}
+          />
+        )}
+
+        {canAdvance && draft.total > 0 && (
+          <DraftBanner
+            rows={draft.items}
+            total={draft.total}
+            page={draftPage}
+            pageSize={draft.pageSize}
+            onPageChange={setDraftPage}
           />
         )}
 
@@ -358,6 +395,72 @@ function PendingBanner({
             </Link>
             <span className="text-muted-foreground">
               待审批申请 {g.pendingRequestCount} 条
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function DraftBanner({
+  rows,
+  total,
+  page,
+  pageSize,
+  onPageChange,
+}: {
+  rows: GrantRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  onPageChange: (p: number) => void;
+}) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  return (
+    <div className="overflow-x-auto border-b border-border bg-sky-50/60 p-3">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="text-sm font-medium text-sky-800">
+          待推进授予提醒（共 {total} 条）
+        </div>
+        <div className="flex items-center gap-2 whitespace-nowrap text-xs">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page <= 1}
+            onClick={() => onPageChange(page - 1)}
+          >
+            上一页
+          </Button>
+          <span className="text-muted-foreground">
+            {page} / {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page >= totalPages}
+            onClick={() => onPageChange(page + 1)}
+          >
+            下一页
+          </Button>
+        </div>
+      </div>
+      <ul className="mt-2 space-y-1">
+        {rows.map((g) => (
+          <li
+            key={g.id}
+            className="flex items-center gap-2 whitespace-nowrap text-sm"
+          >
+            <Link
+              href={`/admin/grants/${g.id}`}
+              className={cn(
+                buttonVariants({ variant: "outline", size: "sm" })
+              )}
+            >
+              {g.user.name} · {g.plan.title}
+            </Link>
+            <span className="text-muted-foreground">
+              Draft 状态，需推进到 Granted
             </span>
           </li>
         ))}
