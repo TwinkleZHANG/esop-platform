@@ -34,9 +34,8 @@ export async function GET(req: Request) {
   const search = (url.searchParams.get("search") ?? "").trim();
   const status = url.searchParams.get("status"); // "在职" | "离职" | "ALL"
 
-  const where: Prisma.UserWhereInput = {
-    role: UserRole.EMPLOYEE,
-  };
+  // 员工档案展示所有用户（含管理员），因为管理员也可能是被激励对象
+  const where: Prisma.UserWhereInput = {};
   if (status === "在职" || status === "离职") {
     where.employmentStatus = status;
   }
