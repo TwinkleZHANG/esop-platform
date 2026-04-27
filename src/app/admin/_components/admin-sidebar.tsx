@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { UserIcon } from "lucide-react";
 
 export interface NavItem {
   href: string;
@@ -72,6 +73,16 @@ export function AdminSidebar({
           </ul>
         </div>
       )}
+
+      <div className="border-t border-border p-2">
+        <Link
+          href="/employee/overview"
+          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <UserIcon className="size-4" />
+          <span>切换到员工视图</span>
+        </Link>
+      </div>
     </aside>
   );
 }

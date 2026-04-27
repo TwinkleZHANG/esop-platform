@@ -1,4 +1,4 @@
-import { GrantStatus, TaxEventStatus, UserRole } from "@prisma/client";
+import { GrantStatus, TaxEventStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isErrorResponse, ok, requireSession } from "@/lib/api-utils";
 
@@ -6,15 +6,7 @@ export async function GET() {
   const session = await requireSession();
   if (isErrorResponse(session)) return session;
 
-  // 员工自己查自己的数据（管理员角色访问返回空）
-  if (session.user.role !== UserRole.EMPLOYEE) {
-    return ok({
-      offboarded: false,
-      closingGrants: [],
-      pendingPaymentCount: 0,
-    });
-  }
-
+  // 员工端提醒：按 session.user.id 过滤；管理员切到员工视图时也走同一份数据
   const [user, closing, pendingPaymentCount] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },

@@ -13,6 +13,7 @@ import {
   FileSignatureIcon,
   ReceiptIcon,
   LogOutIcon,
+  ShieldIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -53,6 +54,7 @@ interface Alerts {
 
 interface Props {
   userName: string;
+  isAdmin: boolean;
   children: React.ReactNode;
 }
 
@@ -81,7 +83,7 @@ function recomputeDays(deadline: string): number {
   return Math.ceil(diff / (24 * 60 * 60 * 1000));
 }
 
-export function EmployeeShell({ userName, children }: Props) {
+export function EmployeeShell({ userName, isAdmin, children }: Props) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [alerts, setAlerts] = useState<Alerts | null>(null);
@@ -160,7 +162,7 @@ export function EmployeeShell({ userName, children }: Props) {
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-2">
+        <nav className="flex flex-1 flex-col overflow-y-auto p-2">
           <ul className="space-y-1">
             {NAV.map(({ href, label, icon: Icon, badgeKey }) => {
               const active =
@@ -193,6 +195,18 @@ export function EmployeeShell({ userName, children }: Props) {
               );
             })}
           </ul>
+          {isAdmin && (
+            <div className="mt-auto border-t border-border pt-2">
+              <Link
+                href="/admin/dashboard"
+                title={collapsed ? "切换到管理视图" : undefined}
+                className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <ShieldIcon className="size-4 shrink-0" />
+                {!collapsed && <span>切换到管理视图</span>}
+              </Link>
+            </div>
+          )}
         </nav>
       </aside>
 

@@ -2,7 +2,6 @@ import {
   GrantStatus,
   PlanType,
   Prisma,
-  UserRole,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
@@ -23,7 +22,7 @@ interface AssetRow {
 export async function GET() {
   const session = await requireSession();
   if (isErrorResponse(session)) return session;
-  if (session.user.role !== UserRole.EMPLOYEE) return fail("仅员工可访问", 403);
+  // 员工端 API：按 session.user.id 过滤，员工与管理员均可访问自己的数据
 
   const [user, grants, latestValuation] = await Promise.all([
     prisma.user.findUnique({

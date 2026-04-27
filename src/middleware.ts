@@ -61,10 +61,7 @@ export async function middleware(req: NextRequest) {
     return redirectForbidden(req, isEmployee ? "/employee" : "/login");
   }
 
-  // 管理员不得访问 /employee/*
-  if (pathname.startsWith("/employee") && !isEmployee) {
-    return redirectForbidden(req, "/admin");
-  }
+  // /employee/* 对员工和管理员都开放（管理员通过侧边栏切换查看自己的股权）
 
   // 用户管理仅超管
   if (pathname.startsWith("/admin/user-management") && !isSuperAdmin) {

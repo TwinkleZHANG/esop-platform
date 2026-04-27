@@ -25,7 +25,8 @@ export async function GET() {
       },
     }),
     prisma.user.findMany({
-      where: { role: "EMPLOYEE", employmentStatus: "在职" },
+      // 创建授予时所有「在职」用户均可作为被授予人（含管理员角色）
+      where: { employmentStatus: "在职" },
       orderBy: { createdAt: "desc" },
       select: { id: true, name: true, employeeId: true, department: true },
     }),
