@@ -16,6 +16,8 @@ export async function GET() {
       where: {
         userId: session.user.id,
         status: GrantStatus.CLOSING,
+        // operableOptions = 0 时提醒立即消失（员工已全部行权，不必等 cron 转 Closed）
+        operableOptions: { gt: 0 },
       },
       select: {
         id: true,
@@ -33,15 +35,27 @@ export async function GET() {
     }),
   ]);
 
-  const now = Date.now();
+  // 按本地天数差计算：同日 0、明日 1、昨日 -1（前端基于此判断「今日是最后行权日」/「已过期」）
+  const today = new Date();
+  const todayMidnight = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  ).getTime();
   const grants = closing.map((g) => {
     const deadline = g.exerciseWindowDeadline;
-    const daysRemaining = deadline
-      ? Math.max(
-          0,
-          Math.ceil((deadline.getTime() - now) / (24 * 60 * 60 * 1000))
-        )
-      : 0;
+    let daysRemaining = 0;
+    if (deadline) {
+      const dl = new Date(deadline);
+      const dlMidnight = new Date(
+        dl.getFullYear(),
+        dl.getMonth(),
+        dl.getDate()
+      ).getTime();
+      daysRemaining = Math.round(
+        (dlMidnight - todayMidnight) / (24 * 60 * 60 * 1000)
+      );
+    }
     return {
       grantId: g.id,
       planTitle: g.plan.title,

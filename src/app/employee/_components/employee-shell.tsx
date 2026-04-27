@@ -79,8 +79,13 @@ function writeDismissed(set: Set<string>) {
 }
 
 function recomputeDays(deadline: string): number {
-  const diff = new Date(deadline).getTime() - Date.now();
-  return Math.ceil(diff / (24 * 60 * 60 * 1000));
+  // deadline 已包到当天 23:59:59；按本地日期天数差判断
+  // 同日 → 0；明日 → 1；昨日 → -1
+  const dl = new Date(deadline);
+  const dlDay = new Date(dl.getFullYear(), dl.getMonth(), dl.getDate()).getTime();
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  return Math.round((dlDay - today) / (24 * 60 * 60 * 1000));
 }
 
 export function EmployeeShell({ userName, isAdmin, children }: Props) {
@@ -288,7 +293,8 @@ function AlertItem({
   onDismiss: () => void;
 }) {
   const deadlineStr = new Date(grant.deadline).toLocaleDateString("zh-CN");
-  const expired = days <= 0;
+  const expired = days < 0;
+  const lastDay = days === 0;
 
   const prefix = offboarded
     ? "您已离职，"
@@ -310,6 +316,8 @@ function AlertItem({
           <>
             <span className="font-semibold text-red-700">已过期</span>，该额度已失效。
           </>
+        ) : lastDay ? (
+          <span className="font-semibold text-red-700">今日是最后行权日。</span>
         ) : (
           <>
             剩余 <span className="font-semibold">{days}</span> 天。
