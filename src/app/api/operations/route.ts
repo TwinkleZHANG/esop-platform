@@ -130,11 +130,8 @@ export async function POST(req: Request) {
   const session = await requireSession();
   if (isErrorResponse(session)) return session;
 
-  // 只有员工可提交（管理员不代提，PRD 7.2 self.submitRequest 仅 EMPLOYEE）
-  if (session.user.role !== UserRole.EMPLOYEE) {
-    return fail("仅员工可提交申请", 403);
-  }
-
+  // 任意登录用户均可对自己的 Grant 提交申请；管理员切到员工视图时也走此路径。
+  // 通过 grant.userId === session.user.id 校验，杜绝越权（见下方）。
   const parsed = createSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return fail(parsed.error.issues[0]?.message ?? "参数错误");

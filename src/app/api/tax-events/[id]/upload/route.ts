@@ -1,4 +1,4 @@
-import { TaxEventStatus, UserRole } from "@prisma/client";
+import { TaxEventStatus } from "@prisma/client";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
@@ -25,9 +25,8 @@ export async function POST(
 ) {
   const session = await requireSession();
   if (isErrorResponse(session)) return session;
-  if (session.user.role !== UserRole.EMPLOYEE) {
-    return fail("仅员工可上传缴款凭证", 403);
-  }
+  // 任意登录用户均可对自己的税务事件上传凭证（管理员切到员工视图同样适用）；
+  // 通过下面 t.userId === session.user.id 防越权。
 
   const t = await prisma.taxEvent.findUnique({
     where: { id: params.id },
