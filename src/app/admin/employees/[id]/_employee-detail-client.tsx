@@ -4,10 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import type { Jurisdiction } from "@prisma/client";
 import Link from "next/link";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
 import { BackToListButton } from "@/components/back-to-list-button";
-import { cn } from "@/lib/utils";
 import { hasPermission } from "@/lib/permissions";
 import { JURISDICTION_LABEL } from "@/lib/i18n";
 import {
@@ -140,13 +139,10 @@ export function EmployeeDetailClient({ userId }: { userId: string }) {
         ) : (
           <ul className="divide-y divide-border text-sm">
             {user.grants.map((g) => (
-              <li key={g.id} className="flex items-center justify-between gap-3 py-2">
+              <li key={g.id}>
                 <Link
                   href={`/admin/grants/${g.id}`}
-                  className={cn(
-                    buttonVariants({ variant: "outline", size: "sm" }),
-                    "h-auto items-start whitespace-normal py-2 text-left"
-                  )}
+                  className="-mx-2 flex cursor-pointer items-center justify-between rounded-md px-2 py-2 hover:bg-muted"
                 >
                   <div>
                     <div className="font-medium">{g.planTitle}</div>
@@ -155,10 +151,10 @@ export function EmployeeDetailClient({ userId }: { userId: string }) {
                       {new Date(g.grantDate).toLocaleDateString("zh-CN")}
                     </div>
                   </div>
+                  <span className="text-xs text-muted-foreground">
+                    {g.status}
+                  </span>
                 </Link>
-                <span className="text-xs text-muted-foreground">
-                  {g.status}
-                </span>
               </li>
             ))}
           </ul>
