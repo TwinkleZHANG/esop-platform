@@ -106,6 +106,31 @@ describe("generateVestingSchedule — 累计进位法", () => {
     expect(sum(schedule)).toBe("200");
   });
 
+  // VEST-06: 累计进位公平性 — 任意截断点的已归属总量与「严格按比例」的差不超过 1
+  test("累计进位公平性：200 / 24 期，任意截断点累计偏差 ≤ 1（PRD 3.5）", () => {
+    const total = 200;
+    const periods = 24; // 2 年 × 12 月
+    const schedule = generateVestingSchedule({
+      totalQuantity: total,
+      vestingStartDate: at(2025, 0, 1),
+      vestingYears: 2,
+      cliffMonths: 0,
+      vestingFrequency: "MONTHLY",
+    });
+    expect(schedule).toHaveLength(periods);
+
+    // 任意第 k 期（1..periods）的实际累计 vs 理论累计 = total*k/periods
+    let cum = new D(0);
+    for (let k = 1; k <= periods; k++) {
+      cum = cum.add(schedule[k - 1].quantity);
+      const ideal = new D(total).mul(k).div(periods);
+      const diff = cum.sub(ideal).abs().toNumber();
+      expect(diff).toBeLessThanOrEqual(1);
+    }
+    // 终值严格相等
+    expect(cum.toString()).toBe(String(total));
+  });
+
   test("边界：授予数量为 1，1 年（12 期），累计进位后仅第 7 期获得 1 份", () => {
     const schedule = generateVestingSchedule({
       totalQuantity: 1,

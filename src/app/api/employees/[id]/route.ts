@@ -101,6 +101,9 @@ export async function PUT(
 
   // 离职级联前置校验（PRD 8.2 / 4.2）
   if (isOffboardingTransition) {
+    // 仅超级管理员和审批管理员可触发离职级联（PRD 7.2 employee.terminate）
+    const terminateCheck = await requirePermission("employee.terminate");
+    if (isErrorResponse(terminateCheck)) return terminateCheck;
     // PRD 要求设为离职时统一填写关闭原因 + 行权窗口期，附到所有被关闭 Grant 上
     if (!d.offboardReason || !d.offboardReason.trim()) {
       return fail("设为离职需填写关闭原因");
