@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status-badge";
@@ -34,10 +35,12 @@ const DELIVERY_LABELS: Record<string, string> = {
 };
 
 export function PlanDetailClient({ planId }: { planId: string }) {
+  const router = useRouter();
   const { data: session } = useSession();
   const role = session?.user?.role;
   const canEdit = hasPermission(role, "plan.create");
   const canApprove = hasPermission(role, "plan.approve");
+  const canDelete = hasPermission(role, "plan.create");
 
   const [plan, setPlan] = useState<PlanDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -99,6 +102,20 @@ export function PlanDetailClient({ planId }: { planId: string }) {
     await load();
   }
 
+  async function handleDelete() {
+    if (!plan) return;
+    if (!confirm(`确认删除计划「${plan.title}」？此操作不可撤销。`)) return;
+    setBusy(true);
+    const res = await fetch(`/api/plans/${planId}`, { method: "DELETE" });
+    const json = await res.json();
+    setBusy(false);
+    if (!json.success) {
+      setError(json.error ?? "删除失败");
+      return;
+    }
+    router.push("/admin/plans");
+  }
+
   const formValue: PlanFormValue = {
     id: plan.id,
     title: plan.title,
@@ -139,6 +156,16 @@ export function PlanDetailClient({ planId }: { planId: string }) {
           {canApprove && isPending && (
             <Button onClick={handleApprove} disabled={busy}>
               {busy ? "处理中..." : "审批通过"}
+            </Button>
+          )}
+          {canDelete && isPending && (
+            <Button
+              variant="outline"
+              className="text-red-600 hover:text-red-700"
+              onClick={handleDelete}
+              disabled={busy}
+            >
+              删除
             </Button>
           )}
         </div>

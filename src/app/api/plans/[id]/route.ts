@@ -123,3 +123,27 @@ export async function PATCH(
 
   return ok({ ...updated, poolSize: updated.poolSize.toFixed(0) });
 }
+
+export async function DELETE(
+  _req: Request,
+  { params }: { params: { id: string } }
+) {
+  // 与创建计划同权限：超管 + 授予管理员
+  const guard = await requirePermission("plan.create");
+  if (isErrorResponse(guard)) return guard;
+
+  const plan = await prisma.plan.findUnique({ where: { id: params.id } });
+  if (!plan) return fail("计划不存在", 404);
+  if (plan.status !== PlanStatus.PENDING_APPROVAL) {
+    return fail("仅审批中的计划可删除");
+  }
+
+  // 任何已存在的 Grant（含 Draft）都阻止删除
+  const grantCount = await prisma.grant.count({ where: { planId: plan.id } });
+  if (grantCount > 0) {
+    return fail("该计划下已有授予记录，无法删除");
+  }
+
+  await prisma.plan.delete({ where: { id: plan.id } });
+  return ok({ deleted: true });
+}
