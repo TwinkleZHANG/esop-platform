@@ -128,17 +128,6 @@ export function PlansClient() {
     await load();
   };
 
-  const deletePlan = async (p: PlanRow) => {
-    if (!confirm(`确认删除计划「${p.title}」？此操作不可撤销。`)) return;
-    const res = await fetch(`/api/plans/${p.id}`, { method: "DELETE" });
-    const json = await res.json();
-    if (!json.success) {
-      alert(json.error ?? "删除失败");
-      return;
-    }
-    await load();
-  };
-
   const toolbar = useMemo(
     () => (
       <SearchToolbar
@@ -238,26 +227,14 @@ export function PlansClient() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <div className="flex flex-wrap gap-2">
-                      <Link
-                        href={`/admin/plans/${p.id}`}
-                        className={cn(
-                          buttonVariants({ variant: "outline", size: "sm" })
-                        )}
-                      >
-                        查看
-                      </Link>
-                      {canCreate && p.status === "PENDING_APPROVAL" && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 hover:text-red-700"
-                          onClick={() => deletePlan(p)}
-                        >
-                          删除
-                        </Button>
+                    <Link
+                      href={`/admin/plans/${p.id}`}
+                      className={cn(
+                        buttonVariants({ variant: "outline", size: "sm" })
                       )}
-                    </div>
+                    >
+                      查看
+                    </Link>
                   </TableCell>
                 </TableRow>
               ))
