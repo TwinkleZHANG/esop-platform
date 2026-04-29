@@ -62,6 +62,7 @@ export async function GET(req: Request) {
         grant: {
           select: {
             id: true,
+            operableShares: true,
             plan: { select: { id: true, title: true, type: true } },
           },
         },
@@ -80,6 +81,7 @@ export async function GET(req: Request) {
         vestingDate: v.vestingDate,
         quantity: v.quantity.toFixed(0),
         exercisableOptions: v.exercisableOptions.toFixed(0),
+        grantOperableShares: v.grant.operableShares.toFixed(0),
         status: v.status,
       })),
       total,
