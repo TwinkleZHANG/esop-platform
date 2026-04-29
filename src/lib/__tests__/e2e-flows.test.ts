@@ -320,6 +320,7 @@ describe("E2E 4.2 Option 完整生命周期", () => {
           grantDate: "2025-01-01", vestingStartDate: "2025-01-01",
           totalQuantity: "1200", strikePrice: "50",
           vestingYears: 1, cliffMonths: 6, vestingFrequency: "MONTHLY",
+          exercisePeriodYears: 5,
         },
       })
     );

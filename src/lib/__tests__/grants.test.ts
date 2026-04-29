@@ -33,6 +33,8 @@ const baseGrantBody = (over: Record<string, unknown> = {}) => ({
   vestingYears: 1,
   cliffMonths: 6,
   vestingFrequency: "MONTHLY",
+  // Option 必填，> vestingYears；RSU 后端忽略。
+  exercisePeriodYears: 5,
   ...over,
 });
 
@@ -320,7 +322,7 @@ describe("GRANT 授予管理与状态机", () => {
     records.forEach((r) => expect(r.status).toBe("CLOSED"));
   });
 
-  test("GRANT-13 关闭 Option（有未行权）→ 200, CLOSING + 截止日", async () => {
+  test("GRANT-13 关闭 Option（有未行权）→ 200, CLOSING + 沿用 exerciseDeadline", async () => {
     const plan = await makeApprovedPlan("OPTION");
     setSession(mockedGetSession, grantAdmin);
     const created = await grantsPOST(
@@ -344,17 +346,19 @@ describe("GRANT 授予管理与状态机", () => {
       where: { id: cb.data!.id },
       data: { operableOptions: "100" },
     });
+    // 正常关闭（非离职）：不传 exerciseWindowDays，员工沿用 exerciseDeadline
     const res = await grantByIdPATCH(
       jsonRequest(`http://localhost/api/grants/${cb.data!.id}`, {
         method: "PATCH",
-        body: { to: "CLOSING", closedReason: "员工离职", exerciseWindowDays: 30 },
+        body: { to: "CLOSING", closedReason: "项目调整" },
       }),
       { params: { id: cb.data!.id } }
     );
     expect(res.status).toBe(200);
     const after = await prisma.grant.findUnique({ where: { id: cb.data!.id } });
     expect(after?.status).toBe("CLOSING");
-    expect(after?.exerciseWindowDeadline).toBeTruthy();
+    expect(after?.exerciseWindowDeadline).toBeNull();
+    expect(after?.exerciseDeadline).toBeTruthy();
   });
 
   test("GRANT-14 关闭 Option（无未行权）→ 200, 直接 CLOSED", async () => {
