@@ -203,6 +203,8 @@ model Grant {
   closedReason              String?
   exerciseWindowDeadline    DateTime?    // 行权窗口截止日（仅 Closing 状态有值）
   exerciseWindowDays        Int?         // 行权窗口期天数（0/30/90/365）
+  exercisePeriodYears       Int?         // 行权期年数（仅 Option，必填）
+  exerciseDeadline          DateTime?    // 行权截止日 = vestingStartDate(或grantDate) + exercisePeriodYears
   createdAt                 DateTime     @default(now())
   updatedAt                 DateTime     @updatedAt
 
