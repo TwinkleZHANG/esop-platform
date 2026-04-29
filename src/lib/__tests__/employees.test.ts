@@ -9,10 +9,7 @@ import {
   POST as employeesPOST,
 } from "@/app/api/employees/route";
 import { PUT as employeeByIdPUT } from "@/app/api/employees/[id]/route";
-import {
-  GET as entitiesGET,
-  POST as entitiesPOST,
-} from "@/app/api/entities/route";
+import { POST as entitiesPOST } from "@/app/api/entities/route";
 import { PUT as entityByIdPUT } from "@/app/api/entities/[id]/route";
 import { POST as grantsPOST } from "@/app/api/grants/route";
 import {
@@ -193,6 +190,56 @@ describe("EMP 员工档案", () => {
       { params: { id: cb.data!.id } }
     );
     expect(res.status).toBe(403);
+  });
+
+  test("EMP-EP-09 离职级联 Option：deadline = min(exerciseDeadline, today + windowDays)", async () => {
+    // 创建员工 + Option 计划
+    setSession(mockedGetSession, grantAdmin);
+    const userRes = await employeesPOST(
+      jsonRequest("http://localhost/api/employees", { body: empBody() })
+    );
+    const ub = await readJson<ApiBody<{ id: string }>>(userRes);
+    const userId = ub.data!.id;
+
+    const plan = await prisma.plan.create({
+      data: {
+        title: `EP-${Date.now()}`, type: "OPTION", jurisdiction: "内地",
+        deliveryMethod: { method: "OPTION_RIGHT" },
+        poolSize: "10000", effectiveDate: new Date(), status: "APPROVED",
+      },
+    });
+    // exerciseDeadline 比窗口期更早 → 选 exerciseDeadline
+    const exerciseDeadline = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+    await prisma.grant.create({
+      data: {
+        planId: plan.id, userId, grantDate: new Date(),
+        totalQuantity: "100", strikePrice: "5",
+        vestingYears: 1, cliffMonths: 0, vestingFrequency: "MONTHLY",
+        status: "FULLY_VESTED", operableOptions: "100",
+        exercisePeriodYears: 5, exerciseDeadline,
+      },
+    });
+    // 触发离职
+    const sa = await createTestUser("SUPER_ADMIN");
+    setSession(mockedGetSession, sa);
+    const res = await employeeByIdPUT(
+      jsonRequest(`http://localhost/api/employees/${userId}`, {
+        method: "PUT",
+        body: {
+          employmentStatus: "离职",
+          offboardReason: "测试",
+          exerciseWindowDays: 90, // 90 天窗口 > 5 天 exerciseDeadline
+        },
+      }),
+      { params: { id: userId } }
+    );
+    expect(res.status).toBe(200);
+    const after = await prisma.grant.findFirst({ where: { userId } });
+    expect(after?.status).toBe("CLOSING");
+    // exerciseWindowDeadline 应等于较早的 exerciseDeadline
+    expect(after?.exerciseWindowDeadline?.getTime()).toBe(
+      exerciseDeadline.getTime()
+    );
   });
 });
 

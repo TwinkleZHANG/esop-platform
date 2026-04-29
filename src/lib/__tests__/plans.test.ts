@@ -6,7 +6,6 @@ jest.mock("next-auth", () => ({ getServerSession: jest.fn() }));
 import { getServerSession } from "next-auth";
 import { GET as plansGET, POST as plansPOST } from "@/app/api/plans/route";
 import {
-  GET as planByIdGET,
   PUT as planByIdPUT,
   PATCH as planByIdPATCH,
 } from "@/app/api/plans/[id]/route";

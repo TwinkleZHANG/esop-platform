@@ -437,6 +437,119 @@ describe("GRANT 授予管理与状态机", () => {
     expect(logs.find((l) => l.toStatus === "GRANTED")).toBeTruthy();
   });
 
+  // ===== Session 10：行权期相关 =====
+
+  test("GRANT-EP-01 创建 Option 授予未传 exercisePeriodYears → 400", async () => {
+    const plan = await makeApprovedPlan("OPTION");
+    setSession(mockedGetSession, grantAdmin);
+    const res = await grantsPOST(
+      jsonRequest("http://localhost/api/grants", {
+        body: {
+          planId: plan.id, userId: employee.id, strikePrice: "5",
+          grantDate: "2026-01-01", totalQuantity: "1200",
+          vestingYears: 1, cliffMonths: 0, vestingFrequency: "MONTHLY",
+          // 故意不传 exercisePeriodYears
+        },
+      })
+    );
+    expect(res.status).toBe(400);
+  });
+
+  test("GRANT-EP-02 创建 Option 授予 exercisePeriodYears <= vestingYears → 400", async () => {
+    const plan = await makeApprovedPlan("OPTION");
+    setSession(mockedGetSession, grantAdmin);
+    const res = await grantsPOST(
+      jsonRequest("http://localhost/api/grants", {
+        body: baseGrantBody({
+          planId: plan.id, userId: employee.id, strikePrice: "5",
+          vestingYears: 5, exercisePeriodYears: 5, // ≤ vestingYears
+        }),
+      })
+    );
+    expect(res.status).toBe(400);
+  });
+
+  test("GRANT-EP-03 创建 Option 授予 exerciseDeadline 自动计算（vestingStartDate + N 年）", async () => {
+    const plan = await makeApprovedPlan("OPTION");
+    setSession(mockedGetSession, grantAdmin);
+    const res = await grantsPOST(
+      jsonRequest("http://localhost/api/grants", {
+        body: baseGrantBody({
+          planId: plan.id, userId: employee.id, strikePrice: "5",
+          vestingStartDate: "2026-03-15",
+          vestingYears: 4, exercisePeriodYears: 7,
+        }),
+      })
+    );
+    expect(res.status).toBe(200);
+    const body = await readJson<ApiBody<{ id: string }>>(res);
+    const g = await prisma.grant.findUnique({ where: { id: body.data!.id } });
+    expect(g?.exercisePeriodYears).toBe(7);
+    // 2026-03-15 + 7 年 = 2033-03-15（落到当天 23:59:59.999）
+    expect(g?.exerciseDeadline?.getFullYear()).toBe(2033);
+    expect(g?.exerciseDeadline?.getMonth()).toBe(2); // 0-indexed
+    expect(g?.exerciseDeadline?.getDate()).toBe(15);
+  });
+
+  test("GRANT-EP-04 创建 RSU 授予不需要 exercisePeriodYears", async () => {
+    const plan = await makeApprovedPlan("RSU");
+    setSession(mockedGetSession, grantAdmin);
+    const res = await grantsPOST(
+      jsonRequest("http://localhost/api/grants", {
+        body: {
+          planId: plan.id, userId: employee.id,
+          grantDate: "2026-01-01", totalQuantity: "100",
+          vestingYears: 1, cliffMonths: 0, vestingFrequency: "MONTHLY",
+        },
+      })
+    );
+    expect(res.status).toBe(200);
+    const body = await readJson<ApiBody<{ id: string }>>(res);
+    const g = await prisma.grant.findUnique({ where: { id: body.data!.id } });
+    expect(g?.exercisePeriodYears).toBeNull();
+    expect(g?.exerciseDeadline).toBeNull();
+  });
+
+  test("GRANT-EP-05 正常关闭 Option（非离职）不写 exerciseWindowDeadline", async () => {
+    const plan = await makeApprovedPlan("OPTION");
+    setSession(mockedGetSession, grantAdmin);
+    const created = await grantsPOST(
+      jsonRequest("http://localhost/api/grants", {
+        body: baseGrantBody({
+          planId: plan.id, userId: employee.id, strikePrice: "5",
+        }),
+      })
+    );
+    const cb = await readJson<ApiBody<{ id: string }>>(created);
+    setSession(mockedGetSession, approvalAdmin);
+    await grantByIdPATCH(
+      jsonRequest(`http://localhost/api/grants/${cb.data!.id}`, {
+        method: "PATCH",
+        body: { to: "GRANTED", agreementId: "X" },
+      }),
+      { params: { id: cb.data!.id } }
+    );
+    await prisma.grant.update({
+      where: { id: cb.data!.id },
+      data: { operableOptions: "100" },
+    });
+    // 不传 exerciseWindowDays
+    const res = await grantByIdPATCH(
+      jsonRequest(`http://localhost/api/grants/${cb.data!.id}`, {
+        method: "PATCH",
+        body: { to: "CLOSING", closedReason: "项目调整" },
+      }),
+      { params: { id: cb.data!.id } }
+    );
+    expect(res.status).toBe(200);
+    const after = await prisma.grant.findUnique({ where: { id: cb.data!.id } });
+    expect(after?.status).toBe("CLOSING");
+    expect(after?.exerciseWindowDeadline).toBeNull();
+    expect(after?.exerciseWindowDays).toBeNull();
+    // 沿用原 exerciseDeadline
+    expect(after?.exerciseDeadline).toBeTruthy();
+  });
+
   test("GRANT-17 Closed 后仍可对实股操作（数据契约：operableShares 不被关闭流程清零）", async () => {
     // 直接构造一个 RSU CLOSED Grant，operableShares > 0，验证数据契约
     const plan = await makeApprovedPlan("RSU");

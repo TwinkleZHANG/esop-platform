@@ -160,6 +160,59 @@ describe("OP 申请与审批", () => {
     expect(res.status).toBe(400);
   });
 
+  test("OP-EP-01 行权期已过 → 400 拒绝行权", async () => {
+    const plan = await makeApprovedOptionPlan();
+    const past = new Date(Date.now() - 24 * 60 * 60 * 1000); // 昨天
+    const g = await prisma.grant.create({
+      data: {
+        planId: plan.id, userId: employee.id, grantDate: new Date(),
+        totalQuantity: "100", vestingYears: 1, cliffMonths: 0,
+        vestingFrequency: "MONTHLY", status: "FULLY_VESTED",
+        operableOptions: "100", strikePrice: "5",
+        exercisePeriodYears: 5, exerciseDeadline: past,
+      },
+    });
+    setSession(mockedGetSession, employee);
+    const res = await opsPOST(
+      jsonRequest("http://localhost/api/operations", {
+        body: {
+          grantId: g.id, requestType: "EXERCISE",
+          requestTarget: "OPTIONS", quantity: "10",
+        },
+      })
+    );
+    expect(res.status).toBe(400);
+    const json = await readJson<{ success: boolean; error: string }>(res);
+    expect(json.error).toContain("行权期");
+  });
+
+  test("OP-EP-02 实际截止日 = min(exerciseDeadline, exerciseWindowDeadline)", async () => {
+    const plan = await makeApprovedOptionPlan();
+    const past = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    // exerciseDeadline 已过，但窗口期未过 → 仍应被 min 后的 exerciseDeadline 拦下
+    const g = await prisma.grant.create({
+      data: {
+        planId: plan.id, userId: employee.id, grantDate: new Date(),
+        totalQuantity: "100", vestingYears: 1, cliffMonths: 0,
+        vestingFrequency: "MONTHLY", status: "CLOSING",
+        operableOptions: "100", strikePrice: "5",
+        exercisePeriodYears: 5, exerciseDeadline: past,
+        exerciseWindowDeadline: future, exerciseWindowDays: 30,
+      },
+    });
+    setSession(mockedGetSession, employee);
+    const res = await opsPOST(
+      jsonRequest("http://localhost/api/operations", {
+        body: {
+          grantId: g.id, requestType: "EXERCISE",
+          requestTarget: "OPTIONS", quantity: "10",
+        },
+      })
+    );
+    expect(res.status).toBe(400);
+  });
+
   test("OP-05 RSU 不能行权 → 400", async () => {
     const plan = await makeApprovedRSUPlan();
     const g = await prisma.grant.create({
