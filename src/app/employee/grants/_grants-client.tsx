@@ -33,6 +33,19 @@ interface Row {
   status: GrantStatus;
   operableShares: string;
   operableOptions: string;
+  exerciseDeadline: string | null;
+  exerciseWindowDeadline: string | null;
+}
+
+// 行权期/关闭窗口是否已过：取已设置的较早者
+function isOptionExpired(row: Row): boolean {
+  const deadlines: number[] = [];
+  if (row.exerciseDeadline)
+    deadlines.push(new Date(row.exerciseDeadline).getTime());
+  if (row.exerciseWindowDeadline)
+    deadlines.push(new Date(row.exerciseWindowDeadline).getTime());
+  if (deadlines.length === 0) return false;
+  return Date.now() > Math.min(...deadlines);
 }
 
 // 员工端不含 Draft（API 已过滤）
@@ -53,6 +66,10 @@ function canApply(row: Row): boolean {
   if (row.status === "ALL_SETTLED") return false;
   if (row.status === "CLOSED") {
     return hasShares; // 仅实股可继续操作（Closed 后 operableOptions 已清零或无意义）
+  }
+  // 行权期已过：仅当还有实股可操作时按钮保留（仅可对实股）
+  if (row.plan.type === "OPTION" && isOptionExpired(row)) {
+    return hasShares;
   }
   // CLOSING + 窗口期内：API 层面仍保留 operableOptions，按钮可用
   return hasShares || hasOpts;
@@ -242,6 +259,9 @@ export function EmployeeGrantsClient() {
                 planTitle: requestTarget.plan.title,
                 operableShares: requestTarget.operableShares,
                 operableOptions: requestTarget.operableOptions,
+                optionsLocked:
+                  requestTarget.plan.type === "OPTION" &&
+                  isOptionExpired(requestTarget),
               }
             : null
         }

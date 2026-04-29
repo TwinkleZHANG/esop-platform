@@ -20,6 +20,8 @@ interface GrantSummary {
   planTitle: string;
   operableShares: string;
   operableOptions: string;
+  /** 行权期/关闭窗口已过 → 期权目标禁用，仅可对实股操作 */
+  optionsLocked?: boolean;
 }
 
 interface Props {
@@ -62,10 +64,10 @@ export function RequestDialog({ grant, onClose, onSubmitted }: Props) {
       setTarget("SHARES");
       setRequestType("SELL");
     } else {
-      // Option 默认先选期权，若无可操作期权则改为实股
+      // Option 默认先选期权，若无可操作期权或期权目标已锁定则改为实股
       const hasOpts = Number(grant.operableOptions) > 0;
       const hasShares = Number(grant.operableShares) > 0;
-      if (hasOpts) {
+      if (hasOpts && !grant.optionsLocked) {
         setTarget("OPTIONS");
         setRequestType("EXERCISE");
       } else if (hasShares) {
@@ -155,10 +157,18 @@ export function RequestDialog({ grant, onClose, onSubmitted }: Props) {
             <div className="space-y-1">
               <Label>操作目标 *</Label>
               <div className="flex gap-3 text-sm">
-                <label className="flex cursor-pointer items-center gap-2">
+                <label
+                  className={
+                    "flex items-center gap-2 " +
+                    (grant.optionsLocked
+                      ? "cursor-not-allowed opacity-50"
+                      : "cursor-pointer")
+                  }
+                >
                   <input
                     type="radio"
                     checked={target === "OPTIONS"}
+                    disabled={grant.optionsLocked}
                     onChange={() => {
                       setTarget("OPTIONS");
                       setRequestType("EXERCISE");
@@ -178,6 +188,11 @@ export function RequestDialog({ grant, onClose, onSubmitted }: Props) {
                   实股
                 </label>
               </div>
+              {grant.optionsLocked && (
+                <p className="text-xs text-muted-foreground">
+                  行权期已到期，仅可对实股操作
+                </p>
+              )}
             </div>
           )}
 

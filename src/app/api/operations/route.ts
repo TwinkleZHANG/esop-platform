@@ -172,6 +172,22 @@ export async function POST(req: Request) {
     );
   }
 
+  // 行权期 / 关闭窗口期截止校验（仅消耗 operableOptions 的申请）
+  // 实际截止日 = min(exerciseDeadline, exerciseWindowDeadline)，取已设置的较早者。
+  if (resolved.consumes === "operableOptions") {
+    const now = new Date();
+    const deadlines: Date[] = [];
+    if (grant.exerciseDeadline) deadlines.push(grant.exerciseDeadline);
+    if (grant.exerciseWindowDeadline)
+      deadlines.push(grant.exerciseWindowDeadline);
+    if (deadlines.length > 0) {
+      const effective = deadlines.reduce((a, b) => (a < b ? a : b));
+      if (now > effective) {
+        return fail("行权期已到期，无法提交行权申请");
+      }
+    }
+  }
+
   const created = await prisma.operationRequest.create({
     data: {
       grantId: grant.id,

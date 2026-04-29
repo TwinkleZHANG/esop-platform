@@ -60,6 +60,8 @@ export async function GET(req: Request) {
         status: g.status,
         operableShares: g.operableShares.toFixed(0),
         operableOptions: g.operableOptions.toFixed(0),
+        exerciseDeadline: g.exerciseDeadline,
+        exerciseWindowDeadline: g.exerciseWindowDeadline,
       })),
       total,
       pagination
