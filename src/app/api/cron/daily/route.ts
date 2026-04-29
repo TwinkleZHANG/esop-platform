@@ -40,6 +40,7 @@ export async function POST(req: Request) {
     valuationMissing: 0,
     grantsAdvanced: 0,
     closingExpired: 0,
+    exercisePeriodExpired: 0,
     errors: [] as { phase: string; grantId: string; message: string }[],
   };
 
@@ -237,6 +238,73 @@ export async function POST(req: Request) {
       result.closingExpired += 1;
     } catch (e) {
       recordError("closingExpire", g.id, e);
+    }
+  }
+
+  // ========== 4) 行权期到期检查（仅 Option） ==========
+  // 扫描 exerciseDeadline 已过的非终态 Option Grant：
+  //   operableOptions → 0；VESTED / PARTIALLY_SETTLED → CLOSED；
+  //   PENDING 行权申请 → CLOSED；Grant → CLOSED；
+  //   未行权额度通过 plan-quantity 自动释放回池（CLOSED 仅计 Settled 部分）。
+  const exerciseExpired = await prisma.grant.findMany({
+    where: {
+      exerciseDeadline: { lte: now },
+      status: {
+        in: [
+          GrantStatus.GRANTED,
+          GrantStatus.VESTING,
+          GrantStatus.FULLY_VESTED,
+          GrantStatus.STILL_EXERCISABLE,
+          GrantStatus.CLOSING,
+        ],
+      },
+      plan: { type: PlanType.OPTION },
+    },
+    select: { id: true, status: true },
+  });
+
+  const EXERCISE_OPERATOR = "系统自动触发 - 行权期到期";
+  for (const g of exerciseExpired) {
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.grant.update({
+          where: { id: g.id },
+          data: {
+            status: GrantStatus.CLOSED,
+            operableOptions: new Prisma.Decimal(0),
+          },
+        });
+        await tx.vestingRecord.updateMany({
+          where: {
+            grantId: g.id,
+            status: {
+              in: [
+                VestingRecordStatus.VESTED,
+                VestingRecordStatus.PARTIALLY_SETTLED,
+              ],
+            },
+          },
+          data: { status: VestingRecordStatus.CLOSED },
+        });
+        await tx.operationRequest.updateMany({
+          where: {
+            grantId: g.id,
+            status: OperationRequestStatus.PENDING,
+          },
+          data: { status: OperationRequestStatus.CLOSED },
+        });
+        await createStatusLog(
+          g.id,
+          g.status,
+          GrantStatus.CLOSED,
+          EXERCISE_OPERATOR,
+          "行权期到期",
+          tx
+        );
+      });
+      result.exercisePeriodExpired += 1;
+    } catch (e) {
+      recordError("exerciseExpire", g.id, e);
     }
   }
 
