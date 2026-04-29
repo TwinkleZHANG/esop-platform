@@ -23,7 +23,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { BackToListButton } from "@/components/back-to-list-button";
-import { WindowDaysPicker } from "@/components/window-days-picker";
 import {
   TAX_EVENT_STATUS_LABEL,
   TAX_EVENT_STATUS_TONE,
@@ -687,16 +686,15 @@ function CloseDialog({
   operableOptions: string;
   onDone: () => Promise<void>;
 }) {
-  const needsWindow = planType === "OPTION" && Number(operableOptions) > 0;
+  // 正常关闭（非离职）：Option 不设窗口期；员工继续按原行权期行权
+  const goesClosing = planType === "OPTION" && Number(operableOptions) > 0;
   const [reason, setReason] = useState("");
-  const [days, setDays] = useState<number | undefined>(30);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (open) {
       setReason("");
-      setDays(30);
       setError(null);
     }
   }, [open]);
@@ -704,17 +702,13 @@ function CloseDialog({
   async function submit() {
     setError(null);
     if (!reason.trim()) return setError("关闭原因必填");
-    if (needsWindow && (days === undefined || days < 0)) {
-      return setError("请选择或填入行权窗口期天数");
-    }
     setBusy(true);
     const res = await fetch(`/api/grants/${grantId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        to: needsWindow ? "CLOSING" : "CLOSED",
+        to: goesClosing ? "CLOSING" : "CLOSED",
         closedReason: reason,
-        ...(needsWindow ? { exerciseWindowDays: days } : {}),
       }),
     });
     const json = await res.json();
@@ -731,11 +725,13 @@ function CloseDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{needsWindow ? "关闭授予（进入 Closing）" : "关闭授予"}</DialogTitle>
+          <DialogTitle>{goesClosing ? "关闭授予（进入 Closing）" : "关闭授予"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 text-sm">
           <p className="text-muted-foreground">
             关闭后所有 PENDING 归属记录将变为 CLOSED，后续不可撤销。
+            {goesClosing &&
+              " 员工仍可在原行权期截止日前行使已归属期权。"}
           </p>
           <div className="space-y-1">
             <Label>关闭原因 *</Label>
@@ -745,12 +741,6 @@ function CloseDialog({
               onChange={(e) => setReason(e.target.value)}
             />
           </div>
-          {needsWindow && (
-            <div className="space-y-1">
-              <Label>行权窗口期 *</Label>
-              <WindowDaysPicker value={days} onChange={setDays} />
-            </div>
-          )}
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
         <DialogFooter>

@@ -305,16 +305,9 @@ export async function PATCH(
       if (grant.operableOptions.lte(0)) {
         return fail("可操作期权为 0，应直接 Closed");
       }
-      if (d.exerciseWindowDays === undefined) {
-        return fail("Option 关闭需选择行权窗口期（0/30/90/365）");
-      }
+      // 正常关闭不设窗口期：员工继续按原 exerciseDeadline 行权
+      // 离职关闭走 /api/employees/[id] 级联，会传 exerciseWindowDays
     }
-
-    // 计算截止日（仅 Closing）
-    const deadline =
-      targetStatus === GrantStatus.CLOSING && d.exerciseWindowDays !== undefined
-        ? addDays(new Date(), d.exerciseWindowDays)
-        : null;
 
     await prisma.$transaction(async (tx) => {
       // Pending 归属记录 → Closed
@@ -331,11 +324,7 @@ export async function PATCH(
         data: {
           status: targetStatus,
           closedReason: d.closedReason,
-          exerciseWindowDeadline: deadline,
-          exerciseWindowDays:
-            targetStatus === GrantStatus.CLOSING
-              ? d.exerciseWindowDays ?? null
-              : null,
+          // 手动关闭不写 exerciseWindowDeadline / exerciseWindowDays
         },
       });
 
@@ -355,9 +344,3 @@ export async function PATCH(
   return fail("不支持的状态变更");
 }
 
-function addDays(base: Date, days: number): Date {
-  const d = new Date(base.getTime());
-  d.setDate(d.getDate() + days);
-  d.setHours(23, 59, 59, 999); // 到期日当天 23:59:59（PRD 10）
-  return d;
-}

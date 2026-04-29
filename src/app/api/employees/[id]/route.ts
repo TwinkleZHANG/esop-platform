@@ -183,9 +183,16 @@ export async function PUT(
           data: { status: VestingRecordStatus.CLOSED },
         });
 
-        const deadline = goingToClosing
-          ? addDays(new Date(), d.exerciseWindowDays!)
-          : null;
+        // 离职关闭：实际行权截止日 = min(exerciseDeadline, today + windowDays)
+        let deadline: Date | null = null;
+        if (goingToClosing) {
+          const windowEnd = addDays(new Date(), d.exerciseWindowDays!);
+          if (g.exerciseDeadline && g.exerciseDeadline < windowEnd) {
+            deadline = g.exerciseDeadline;
+          } else {
+            deadline = windowEnd;
+          }
+        }
 
         await tx.grant.update({
           where: { id: g.id },
