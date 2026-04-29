@@ -207,7 +207,11 @@ export function EmployeeGrantsClient() {
               </TableRow>
             ) : (
               data.items.map((r) => (
-                <TableRow key={r.id}>
+                <TableRow
+                  key={r.id}
+                  className="cursor-pointer hover:bg-muted/60"
+                  onClick={() => router.push(`/employee/grants/${r.id}`)}
+                >
                   <TableCell className="max-w-[220px] truncate">
                     {r.plan.title}
                   </TableCell>
@@ -231,7 +235,7 @@ export function EmployeeGrantsClient() {
                       {GRANT_STATUS_LABEL[r.status]}
                     </StatusBadge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     {canApply(r) ? (
                       <Button
                         size="sm"
