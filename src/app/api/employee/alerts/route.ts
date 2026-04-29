@@ -23,9 +23,13 @@ export async function GET() {
         id: true,
         operableOptions: true,
         exerciseWindowDeadline: true,
+        exerciseDeadline: true,
         plan: { select: { title: true } },
       },
-      orderBy: { exerciseWindowDeadline: "asc" },
+      orderBy: [
+        { exerciseWindowDeadline: "asc" },
+        { exerciseDeadline: "asc" },
+      ],
     }),
     prisma.taxEvent.count({
       where: {
@@ -43,7 +47,10 @@ export async function GET() {
     today.getDate()
   ).getTime();
   const grants = closing.map((g) => {
-    const deadline = g.exerciseWindowDeadline;
+    // 离职关闭：用 exerciseWindowDeadline（已是 min(exerciseDeadline, 今天+窗口期)）
+    // 正常关闭：exerciseWindowDeadline 为 null，用原 exerciseDeadline
+    const isOffboardingClose = g.exerciseWindowDeadline !== null;
+    const deadline = g.exerciseWindowDeadline ?? g.exerciseDeadline;
     let daysRemaining = 0;
     if (deadline) {
       const dl = new Date(deadline);
@@ -62,6 +69,9 @@ export async function GET() {
       operableOptions: g.operableOptions.toFixed(0),
       deadline,
       daysRemaining,
+      deadlineType: isOffboardingClose
+        ? ("OFFBOARDING_WINDOW" as const)
+        : ("EXERCISE_PERIOD" as const),
     };
   });
 

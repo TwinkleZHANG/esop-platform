@@ -44,6 +44,7 @@ interface ClosingGrant {
   operableOptions: string;
   deadline: string;
   daysRemaining: number;
+  deadlineType: "OFFBOARDING_WINDOW" | "EXERCISE_PERIOD";
 }
 
 interface Alerts {
@@ -295,6 +296,10 @@ function AlertItem({
   const deadlineStr = new Date(grant.deadline).toLocaleDateString("zh-CN");
   const expired = days < 0;
   const lastDay = days === 0;
+  const deadlineLabel =
+    grant.deadlineType === "OFFBOARDING_WINDOW"
+      ? "行权窗口截止日"
+      : "行权期截止日";
 
   const prefix = offboarded
     ? "您已离职，"
@@ -310,8 +315,8 @@ function AlertItem({
           </>
         )}
         已归属未行权期权：
-        <span className="font-semibold">{grant.operableOptions}</span> 份，必须在{" "}
-        <span className="font-semibold">{deadlineStr}</span> 前行权，
+        <span className="font-semibold">{grant.operableOptions}</span> 份，{deadlineLabel}{" "}
+        <span className="font-semibold">{deadlineStr}</span>，必须在此日前行权，
         {expired ? (
           <>
             <span className="font-semibold text-red-700">已过期</span>，该额度已失效。
