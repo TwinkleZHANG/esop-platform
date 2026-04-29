@@ -17,6 +17,7 @@ import {
 import { generateVestingSchedule } from "@/lib/vesting";
 import { validateGrantTransition } from "@/lib/state-machine";
 import { createStatusLog } from "@/lib/audit";
+import { addYearsEndOfDay } from "@/lib/exercise-period";
 
 const updateSchema = z.object({
   holdingEntityId: z.string().nullable().optional(),
@@ -28,6 +29,7 @@ const updateSchema = z.object({
   vestingYears: z.number().int().positive().optional(),
   cliffMonths: z.number().int().min(0).optional(),
   vestingFrequency: z.enum(["MONTHLY", "YEARLY"]).optional(),
+  exercisePeriodYears: z.number().int().positive().optional().nullable(),
 });
 
 const patchSchema = z.object({
@@ -166,6 +168,37 @@ export async function PUT(
   if (d.cliffMonths !== undefined) data.cliffMonths = d.cliffMonths;
   if (d.vestingFrequency !== undefined)
     data.vestingFrequency = d.vestingFrequency;
+
+  // Option 行权期：editable in Draft；如果传了或更改了 vestingYears/vestingStartDate，重算 exerciseDeadline
+  const planForGrant = await prisma.plan.findUnique({
+    where: { id: grant.planId },
+    select: { type: true },
+  });
+  if (planForGrant?.type === PlanType.OPTION) {
+    const finalVestingYears = d.vestingYears ?? grant.vestingYears;
+    const finalExercisePeriodYears =
+      d.exercisePeriodYears !== undefined && d.exercisePeriodYears !== null
+        ? d.exercisePeriodYears
+        : grant.exercisePeriodYears;
+    if (finalExercisePeriodYears == null) {
+      return fail("Option 必须填写行权期（年）");
+    }
+    if (finalExercisePeriodYears <= finalVestingYears) {
+      return fail("行权期必须大于归属年限");
+    }
+    // 计算基准日：以编辑后的 vestingStartDate 优先，否则用 grant 当前值，再退到 grantDate
+    const finalVestingStartDate =
+      d.vestingStartDate !== undefined
+        ? d.vestingStartDate
+          ? new Date(d.vestingStartDate)
+          : null
+        : grant.vestingStartDate;
+    const finalGrantDate =
+      d.grantDate !== undefined ? new Date(d.grantDate) : grant.grantDate;
+    const base = finalVestingStartDate ?? finalGrantDate;
+    data.exercisePeriodYears = finalExercisePeriodYears;
+    data.exerciseDeadline = addYearsEndOfDay(base, finalExercisePeriodYears);
+  }
 
   const updated = await prisma.grant.update({
     where: { id: grant.id },

@@ -65,6 +65,8 @@ interface GrantDetail {
   closedReason: string | null;
   exerciseWindowDeadline: string | null;
   exerciseWindowDays: number | null;
+  exercisePeriodYears: number | null;
+  exerciseDeadline: string | null;
   vestingRecords: {
     id: string;
     vestingDate: string;
@@ -260,6 +262,28 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
             label="归属频率"
             value={grant.vestingFrequency === "MONTHLY" ? "按月" : "按年"}
           />
+          {isOption && (
+            <>
+              <Field
+                label="行权期"
+                value={
+                  grant.exercisePeriodYears
+                    ? `${grant.exercisePeriodYears} 年`
+                    : "-"
+                }
+              />
+              <Field
+                label="行权截止日"
+                value={
+                  grant.exerciseDeadline
+                    ? new Date(grant.exerciseDeadline).toLocaleDateString(
+                        "zh-CN"
+                      )
+                    : "-"
+                }
+              />
+            </>
+          )}
           <Field label="可操作股数" value={grant.operableShares} />
           <Field
             label="可操作期权"

@@ -18,6 +18,7 @@ import {
   requirePermission,
 } from "@/lib/api-utils";
 import { computePlanGrantedQuantity } from "@/lib/plan-quantity";
+import { addYearsEndOfDay } from "@/lib/exercise-period";
 
 const createSchema = z.object({
   planId: z.string().min(1, "计划必选"),
@@ -31,6 +32,7 @@ const createSchema = z.object({
   vestingYears: z.number().int().positive(),
   cliffMonths: z.number().int().min(0),
   vestingFrequency: z.enum(["MONTHLY", "YEARLY"]),
+  exercisePeriodYears: z.number().int().positive().optional().nullable(),
 });
 
 export async function GET(req: Request) {
@@ -95,6 +97,8 @@ export async function GET(req: Request) {
     operableOptions: g.operableOptions.toFixed(0),
     exerciseWindowDeadline: g.exerciseWindowDeadline,
     exerciseWindowDays: g.exerciseWindowDays,
+    exercisePeriodYears: g.exercisePeriodYears,
+    exerciseDeadline: g.exerciseDeadline,
     pendingRequestCount: g._count.operationRequests,
   }));
 
@@ -171,6 +175,23 @@ export async function POST(req: Request) {
     : grantDate;
   if (isNaN(vestingStartDate.getTime())) return fail("授予计划开始日期格式错误");
 
+  // 行权期：Option 必填且必须 > vestingYears；RSU 不需要
+  let exercisePeriodYears: number | null = null;
+  let exerciseDeadline: Date | null = null;
+  if (plan.type === PlanType.OPTION) {
+    if (
+      d.exercisePeriodYears === undefined ||
+      d.exercisePeriodYears === null
+    ) {
+      return fail("Option 必须填写行权期（年）");
+    }
+    if (d.exercisePeriodYears <= d.vestingYears) {
+      return fail("行权期必须大于归属年限");
+    }
+    exercisePeriodYears = d.exercisePeriodYears;
+    exerciseDeadline = addYearsEndOfDay(vestingStartDate, exercisePeriodYears);
+  }
+
   // Draft 阶段不生成归属记录（PRD 3.3 + 4.5）
   const grant = await prisma.grant.create({
     data: {
@@ -185,6 +206,8 @@ export async function POST(req: Request) {
       vestingYears: d.vestingYears,
       cliffMonths: d.cliffMonths,
       vestingFrequency: d.vestingFrequency,
+      exercisePeriodYears,
+      exerciseDeadline,
       status: GrantStatus.DRAFT,
     },
   });

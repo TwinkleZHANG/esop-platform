@@ -188,6 +188,7 @@ export function GrantsClient() {
         vestingYears: v.vestingYears,
         cliffMonths: v.cliffMonths,
         vestingFrequency: v.vestingFrequency,
+        exercisePeriodYears: v.exercisePeriodYears,
       }),
     });
     const json = await res.json();

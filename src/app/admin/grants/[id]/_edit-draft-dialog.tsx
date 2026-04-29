@@ -29,6 +29,7 @@ interface GrantInitial {
   vestingYears: number;
   cliffMonths: number;
   vestingFrequency: "MONTHLY" | "YEARLY";
+  exercisePeriodYears: number | null;
 }
 
 interface EntityOpt {
@@ -39,6 +40,7 @@ interface EntityOpt {
 
 const PRESET_YEARS = [1, 2, 3, 4, 5];
 const PRESET_CLIFF = [0, 6, 12, 18, 24];
+const PRESET_EXERCISE_PERIODS = [4, 5, 6, 7, 8, 9, 10];
 
 export function EditDraftDialog({
   open,
@@ -70,11 +72,18 @@ export function EditDraftDialog({
   const [vestingFrequency, setVestingFrequency] = useState<"MONTHLY" | "YEARLY">(
     initial.vestingFrequency
   );
+  const [exercisePeriodYears, setExercisePeriodYears] = useState<number | null>(
+    initial.exercisePeriodYears
+  );
   const [customYears, setCustomYears] = useState(
     !PRESET_YEARS.includes(initial.vestingYears)
   );
   const [customCliff, setCustomCliff] = useState(
     !PRESET_CLIFF.includes(initial.cliffMonths)
+  );
+  const [customExercise, setCustomExercise] = useState(
+    initial.exercisePeriodYears !== null &&
+      !PRESET_EXERCISE_PERIODS.includes(initial.exercisePeriodYears)
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,8 +107,13 @@ export function EditDraftDialog({
       setVestingYears(initial.vestingYears);
       setCliffMonths(initial.cliffMonths);
       setVestingFrequency(initial.vestingFrequency);
+      setExercisePeriodYears(initial.exercisePeriodYears);
       setCustomYears(!PRESET_YEARS.includes(initial.vestingYears));
       setCustomCliff(!PRESET_CLIFF.includes(initial.cliffMonths));
+      setCustomExercise(
+        initial.exercisePeriodYears !== null &&
+          !PRESET_EXERCISE_PERIODS.includes(initial.exercisePeriodYears)
+      );
       setError(null);
       void loadOptions();
     }
@@ -119,6 +133,12 @@ export function EditDraftDialog({
       return setError("授予数量必须为整数");
     if (!isRSU && (!strikePrice || Number(strikePrice) <= 0))
       return setError("Option 行权价必填且大于 0");
+    if (!isRSU) {
+      if (!exercisePeriodYears || exercisePeriodYears <= 0)
+        return setError("Option 必须填写行权期（年）");
+      if (exercisePeriodYears <= vestingYears)
+        return setError("行权期必须大于归属年限");
+    }
 
     setBusy(true);
     const res = await fetch(`/api/grants/${grantId}`, {
@@ -134,6 +154,7 @@ export function EditDraftDialog({
         vestingYears,
         cliffMonths,
         vestingFrequency,
+        exercisePeriodYears: isRSU ? null : exercisePeriodYears,
       }),
     });
     const json = await res.json();
@@ -220,6 +241,53 @@ export function EditDraftDialog({
               onChange={(e) => setAgreementId(e.target.value)}
             />
           </div>
+
+          {!isRSU && (
+            <div className="space-y-1">
+              <Label>行权期（年）* — 必须大于归属年限</Label>
+              <NativeSelect
+                value={
+                  exercisePeriodYears === null
+                    ? ""
+                    : customExercise
+                      ? "CUSTOM"
+                      : String(exercisePeriodYears)
+                }
+                onChange={(v) => {
+                  if (v === "CUSTOM") setCustomExercise(true);
+                  else if (v === "") {
+                    setCustomExercise(false);
+                    setExercisePeriodYears(null);
+                  } else {
+                    setCustomExercise(false);
+                    setExercisePeriodYears(Number(v));
+                  }
+                }}
+                options={[
+                  { value: "", label: "请选择" },
+                  ...PRESET_EXERCISE_PERIODS.map((n) => ({
+                    value: String(n),
+                    label: `${n} 年`,
+                  })),
+                  { value: "CUSTOM", label: "自定义" },
+                ]}
+              />
+              {customExercise && (
+                <Input
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="年"
+                  value={exercisePeriodYears ?? ""}
+                  onChange={(e) => {
+                    const n = Number(e.target.value);
+                    if (Number.isInteger(n) && n > 0)
+                      setExercisePeriodYears(n);
+                  }}
+                />
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="space-y-1">
