@@ -8,8 +8,9 @@ import { prisma } from "@/lib/prisma";
 export async function getFMVForDate(
   triggerDate: Date
 ): Promise<Valuation | null> {
+  // 同日多条估值时取最新创建的那条（CLARIFY-008）
   return prisma.valuation.findFirst({
     where: { valuationDate: { lte: triggerDate } },
-    orderBy: { valuationDate: "desc" },
+    orderBy: [{ valuationDate: "desc" }, { createdAt: "desc" }],
   });
 }
