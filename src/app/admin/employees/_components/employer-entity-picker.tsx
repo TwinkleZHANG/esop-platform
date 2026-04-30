@@ -60,17 +60,39 @@ export function EmployerEntityPicker({ value, onChange }: Props) {
           <span className="text-sm text-muted-foreground">暂无用工主体</span>
         )}
         {entities.map((e) => (
-          <label
+          <span
             key={e.id}
-            className="flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm"
+            className="flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm"
           >
-            <input
-              type="checkbox"
-              checked={value.includes(e.id)}
-              onChange={() => toggle(e.id)}
-            />
-            {e.name}
-          </label>
+            <label className="flex cursor-pointer items-center gap-2">
+              <input
+                type="checkbox"
+                checked={value.includes(e.id)}
+                onChange={() => toggle(e.id)}
+              />
+              {e.name}
+            </label>
+            <button
+              type="button"
+              title="删除"
+              className="text-xs text-red-600 hover:underline"
+              onClick={async () => {
+                if (!confirm(`确认删除用工主体「${e.name}」？`)) return;
+                const res = await fetch(`/api/employer-entities/${e.id}`, {
+                  method: "DELETE",
+                });
+                const json = await res.json();
+                if (!json.success) {
+                  alert(json.error ?? "删除失败");
+                  return;
+                }
+                await load();
+                onChange(value.filter((x) => x !== e.id));
+              }}
+            >
+              删除
+            </button>
+          </span>
         ))}
       </div>
 
