@@ -73,34 +73,45 @@ export async function GET() {
     today.getMonth(),
     today.getDate()
   ).getTime();
-  const grants = closing.map((g) => {
-    // 离职关闭：用 exerciseWindowDeadline（已是 min(exerciseDeadline, 今天+窗口期)）
-    // 正常关闭：exerciseWindowDeadline 为 null，用原 exerciseDeadline
-    const isOffboardingClose = g.exerciseWindowDeadline !== null;
-    const deadline = g.exerciseWindowDeadline ?? g.exerciseDeadline;
-    let daysRemaining = 0;
-    if (deadline) {
+  const grants = closing
+    .map((g) => {
+      // 离职 Closing：exerciseWindowDeadline 严格早于 exerciseDeadline（窗口期使截止日提前）
+      // 正常 Closing：exerciseWindowDeadline 为 null（沿用原 exerciseDeadline），
+      //   或与 exerciseDeadline 相等（离职窗口刚好等于 exerciseDeadline）
+      const isOffboardingClose =
+        g.exerciseWindowDeadline !== null &&
+        (g.exerciseDeadline === null ||
+          g.exerciseWindowDeadline < g.exerciseDeadline);
+      const deadline = g.exerciseWindowDeadline ?? g.exerciseDeadline;
+      if (!deadline) return null;
       const dl = new Date(deadline);
       const dlMidnight = new Date(
         dl.getFullYear(),
         dl.getMonth(),
         dl.getDate()
       ).getTime();
-      daysRemaining = Math.round(
+      const daysRemaining = Math.round(
         (dlMidnight - todayMidnight) / (24 * 60 * 60 * 1000)
       );
-    }
-    return {
-      grantId: g.id,
-      planTitle: g.plan.title,
-      operableOptions: g.operableOptions.toFixed(0),
-      deadline,
-      daysRemaining,
-      deadlineType: isOffboardingClose
-        ? ("OFFBOARDING_WINDOW" as const)
-        : ("EXERCISE_PERIOD" as const),
-    };
-  });
+      // 正常 Closing：与普通行权期提醒一致，仅当距截止日 ≤ 90 天才显示
+      // 离职 Closing：窗口期通常很短，立即显示
+      if (!isOffboardingClose) {
+        const within90 =
+          dl.getTime() - Date.now() <= NINETY_DAYS_MS;
+        if (!within90) return null;
+      }
+      return {
+        grantId: g.id,
+        planTitle: g.plan.title,
+        operableOptions: g.operableOptions.toFixed(0),
+        deadline,
+        daysRemaining,
+        deadlineType: isOffboardingClose
+          ? ("OFFBOARDING_WINDOW" as const)
+          : ("EXERCISE_PERIOD" as const),
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
 
   // 行权期提醒：≤ 90 天 或 已过期；同时有窗口期截止日时取较早者作为实际截止日
   const now = Date.now();
