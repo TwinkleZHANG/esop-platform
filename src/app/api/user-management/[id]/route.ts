@@ -27,9 +27,21 @@ export async function PATCH(
   const user = await prisma.user.findUnique({ where: { id: params.id } });
   if (!user) return fail("用户不存在", 404);
 
+  // 唯一超管防降级（CLARIFY-002）：当前是超管且新角色不再是超管时，
+  // 必须保证系统中至少还有 1 个其他超管。
+  const newRole = parsed.data.role as UserRole;
+  if (user.role === UserRole.SUPER_ADMIN && newRole !== UserRole.SUPER_ADMIN) {
+    const otherSuperCount = await prisma.user.count({
+      where: { role: UserRole.SUPER_ADMIN, id: { not: user.id } },
+    });
+    if (otherSuperCount === 0) {
+      return fail("系统必须至少保留一个超级管理员");
+    }
+  }
+
   const updated = await prisma.user.update({
     where: { id: user.id },
-    data: { role: parsed.data.role as UserRole },
+    data: { role: newRole },
     select: { id: true, role: true },
   });
   return ok(updated);
