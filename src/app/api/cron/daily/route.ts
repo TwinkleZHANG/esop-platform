@@ -37,6 +37,7 @@ export async function POST(req: Request) {
   const result = {
     vestedRecords: 0,
     rsuTaxEventsCreated: 0,
+    rsuTaxEventsBackfilled: 0,
     valuationMissing: 0,
     grantsAdvanced: 0,
     closingExpired: 0,
@@ -142,6 +143,65 @@ export async function POST(req: Request) {
       });
     } catch (e) {
       recordError("vesting", grantId, e);
+    }
+  }
+
+  // ========== 1.5) RSU 缺估值的归属税务补生成 ==========
+  // PRD 4.4 / 第 10 节：管理员录入估值后，下次定时任务自动补生成对应的税务事件。
+  // 扫描所有 RSU 的 VESTED 归属记录，若未关联 VESTING_TAX 则尝试补生成。
+  const rsuVested = await prisma.vestingRecord.findMany({
+    where: {
+      status: VestingRecordStatus.VESTED,
+      grant: { plan: { type: PlanType.RSU } },
+    },
+    select: {
+      id: true,
+      grantId: true,
+      vestingDate: true,
+      quantity: true,
+      grant: { select: { userId: true } },
+    },
+  });
+  if (rsuVested.length > 0) {
+    const existingTax = await prisma.taxEvent.findMany({
+      where: {
+        eventType: TaxEventType.VESTING_TAX,
+        vestingRecordId: { in: rsuVested.map((r) => r.id) },
+      },
+      select: { vestingRecordId: true },
+    });
+    const covered = new Set(
+      existingTax.map((t) => t.vestingRecordId).filter((x): x is string => !!x)
+    );
+    for (const rec of rsuVested) {
+      if (covered.has(rec.id)) continue;
+      try {
+        const fmv = await getFMVForDate(rec.vestingDate);
+        if (!fmv) {
+          result.valuationMissing += 1;
+          continue;
+        }
+        await prisma.taxEvent.create({
+          data: {
+            grantId: rec.grantId,
+            userId: rec.grant.userId,
+            eventType: TaxEventType.VESTING_TAX,
+            operationType: "归属",
+            operationTarget: null,
+            quantity: rec.quantity,
+            eventDate: now,
+            fmvAtEvent: fmv.fmv,
+            valuationId: fmv.id,
+            vestingRecordId: rec.id,
+            strikePrice: new Prisma.Decimal(0),
+            status: TaxEventStatus.PENDING_PAYMENT,
+            operationRequestId: null,
+          },
+        });
+        result.rsuTaxEventsBackfilled += 1;
+      } catch (e) {
+        recordError("rsuTaxBackfill", rec.grantId, e);
+      }
     }
   }
 
