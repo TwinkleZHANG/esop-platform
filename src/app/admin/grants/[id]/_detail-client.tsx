@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import type {
   GrantStatus,
@@ -136,6 +137,7 @@ const VESTING_STATUS_LABEL: Record<VestingRecordStatus, string> = {
 };
 
 export function GrantDetailClient({ grantId }: { grantId: string }) {
+  const router = useRouter();
   const { data: session } = useSession();
   const role = session?.user?.role;
   const sessionUserId = session?.user?.id;
@@ -143,6 +145,7 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
   const canAdvance = hasPermission(role, "grant.advance");
   const canClose = hasPermission(role, "grant.close");
   const canApprove = hasPermission(role, "operationRequest.approve");
+  const canDelete = hasPermission(role, "grant.create");
 
   const [grant, setGrant] = useState<GrantDetail | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -221,6 +224,31 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
           {canClose && !isClosed && grant.status !== "CLOSING" && (
             <Button variant="outline" onClick={() => setCloseOpen(true)}>
               关闭授予
+            </Button>
+          )}
+          {canDelete && isDraft && (
+            <Button
+              variant="outline"
+              className="border-red-500 text-red-600 hover:bg-red-50 hover:text-red-700"
+              onClick={async () => {
+                if (
+                  !confirm(
+                    `确认删除授予「${grant.user.name} · ${grant.plan.title}」？此操作不可撤销。`
+                  )
+                )
+                  return;
+                const res = await fetch(`/api/grants/${grantId}`, {
+                  method: "DELETE",
+                });
+                const json = await res.json();
+                if (!json.success) {
+                  alert(json.error ?? "删除失败");
+                  return;
+                }
+                router.push("/admin/grants");
+              }}
+            >
+              删除
             </Button>
           )}
         </div>

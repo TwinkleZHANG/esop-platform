@@ -93,6 +93,25 @@ export async function GET(
   });
 }
 
+export async function DELETE(
+  _req: Request,
+  { params }: { params: { id: string } }
+) {
+  // 与创建授予同权限：超管 + 授予管理员
+  const guard = await requirePermission("grant.create");
+  if (isErrorResponse(guard)) return guard;
+
+  const grant = await prisma.grant.findUnique({ where: { id: params.id } });
+  if (!grant) return fail("授予不存在", 404);
+  if (grant.status !== GrantStatus.DRAFT) {
+    return fail("仅 Draft 状态可删除");
+  }
+  // Draft 授予无归属/税务/申请，直接删除即可。
+  // 删除后已授予数量自动减少（plan-quantity 仅汇总仍存在的 Grant）。
+  await prisma.grant.delete({ where: { id: grant.id } });
+  return ok({ deleted: true });
+}
+
 export async function PUT(
   req: Request,
   { params }: { params: { id: string } }
