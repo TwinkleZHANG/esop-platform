@@ -47,9 +47,19 @@ interface ClosingGrant {
   deadlineType: "OFFBOARDING_WINDOW" | "EXERCISE_PERIOD";
 }
 
+interface ExerciseAlert {
+  grantId: string;
+  planTitle: string;
+  operableOptions: string;
+  deadline: string;
+  daysRemaining: number;
+  expired: boolean;
+}
+
 interface Alerts {
   offboarded: boolean;
   closingGrants: ClosingGrant[];
+  exerciseDeadlineAlerts: ExerciseAlert[];
   pendingPaymentCount: number;
 }
 
@@ -60,12 +70,14 @@ interface Props {
 }
 
 const DISMISS_KEY = "esop:dismissedClosingAlerts";
+// 行权期到期提醒的"确认"独立 key（仅过期态需要确认；未过期的提醒不可关闭）
+const EXERCISE_DISMISS_KEY = "esop:dismissedExerciseAlerts";
 const ALERTS_PAGE_SIZE = 3;
 
-function readDismissed(): Set<string> {
+function readDismissed(key: string): Set<string> {
   if (typeof window === "undefined") return new Set();
   try {
-    const raw = window.localStorage.getItem(DISMISS_KEY);
+    const raw = window.localStorage.getItem(key);
     if (!raw) return new Set();
     const arr = JSON.parse(raw);
     return Array.isArray(arr) ? new Set(arr as string[]) : new Set();
@@ -74,9 +86,9 @@ function readDismissed(): Set<string> {
   }
 }
 
-function writeDismissed(set: Set<string>) {
+function writeDismissed(key: string, set: Set<string>) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(DISMISS_KEY, JSON.stringify(Array.from(set)));
+  window.localStorage.setItem(key, JSON.stringify(Array.from(set)));
 }
 
 function recomputeDays(deadline: string): number {
@@ -94,7 +106,11 @@ export function EmployeeShell({ userName, isAdmin, children }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [alerts, setAlerts] = useState<Alerts | null>(null);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [exerciseDismissed, setExerciseDismissed] = useState<Set<string>>(
+    new Set()
+  );
   const [alertPage, setAlertPage] = useState(1);
+  const [exercisePage, setExercisePage] = useState(1);
 
   const loadAlerts = useCallback(async () => {
     const res = await fetch("/api/employee/alerts");
@@ -103,7 +119,8 @@ export function EmployeeShell({ userName, isAdmin, children }: Props) {
   }, []);
 
   useEffect(() => {
-    setDismissed(readDismissed());
+    setDismissed(readDismissed(DISMISS_KEY));
+    setExerciseDismissed(readDismissed(EXERCISE_DISMISS_KEY));
   }, []);
 
   useEffect(() => {
@@ -133,11 +150,43 @@ export function EmployeeShell({ userName, isAdmin, children }: Props) {
     pageStart + ALERTS_PAGE_SIZE
   );
 
+  // 行权期提醒：过滤已确认（仅过期态可被确认隐藏；未过期的提醒持续展示）
+  const visibleExerciseAlerts = useMemo(() => {
+    if (!alerts) return [];
+    return alerts.exerciseDeadlineAlerts
+      .filter((a) => !(a.expired && exerciseDismissed.has(a.grantId)))
+      .map((a) => ({ ...a, days: recomputeDays(a.deadline) }))
+      .sort((x, y) => {
+        if (x.days !== y.days) return x.days - y.days;
+        return Number(y.operableOptions) - Number(x.operableOptions);
+      });
+  }, [alerts, exerciseDismissed]);
+
+  const exerciseTotalPages = Math.max(
+    1,
+    Math.ceil(visibleExerciseAlerts.length / ALERTS_PAGE_SIZE)
+  );
+  const exerciseCurrentPage = Math.min(exercisePage, exerciseTotalPages);
+  const exercisePageStart = (exerciseCurrentPage - 1) * ALERTS_PAGE_SIZE;
+  const pagedExerciseAlerts = visibleExerciseAlerts.slice(
+    exercisePageStart,
+    exercisePageStart + ALERTS_PAGE_SIZE
+  );
+
   function dismissAlert(grantId: string) {
     setDismissed((prev) => {
       const next = new Set(prev);
       next.add(grantId);
-      writeDismissed(next);
+      writeDismissed(DISMISS_KEY, next);
+      return next;
+    });
+  }
+
+  function dismissExerciseAlert(grantId: string) {
+    setExerciseDismissed((prev) => {
+      const next = new Set(prev);
+      next.add(grantId);
+      writeDismissed(EXERCISE_DISMISS_KEY, next);
       return next;
     });
   }
@@ -276,6 +325,49 @@ export function EmployeeShell({ userName, isAdmin, children }: Props) {
           </div>
         )}
 
+        {visibleExerciseAlerts.length > 0 && (
+          <div className="border-b border-amber-200 bg-amber-50 px-6 py-3">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-sm font-medium text-amber-800">
+                行权期到期提醒（共 {visibleExerciseAlerts.length} 条）
+              </span>
+              {exerciseTotalPages > 1 && (
+                <div className="flex items-center gap-2 text-xs">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={exerciseCurrentPage <= 1}
+                    onClick={() => setExercisePage(exerciseCurrentPage - 1)}
+                  >
+                    上一页
+                  </Button>
+                  <span className="text-muted-foreground">
+                    {exerciseCurrentPage} / {exerciseTotalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={exerciseCurrentPage >= exerciseTotalPages}
+                    onClick={() => setExercisePage(exerciseCurrentPage + 1)}
+                  >
+                    下一页
+                  </Button>
+                </div>
+              )}
+            </div>
+            <ul className="space-y-1">
+              {pagedExerciseAlerts.map((a) => (
+                <ExerciseAlertItem
+                  key={a.grantId}
+                  alert={a}
+                  days={a.days}
+                  onDismiss={() => dismissExerciseAlert(a.grantId)}
+                />
+              ))}
+            </ul>
+          </div>
+        )}
+
         <main className="flex-1 overflow-x-hidden p-6">{children}</main>
       </div>
     </div>
@@ -325,6 +417,55 @@ function AlertItem({
           <span className="font-semibold text-red-700">今日是最后行权日。</span>
         ) : (
           <>
+            剩余 <span className="font-semibold">{days}</span> 天。
+          </>
+        )}
+      </span>
+      {expired && (
+        <Button variant="outline" size="sm" onClick={onDismiss}>
+          确认
+        </Button>
+      )}
+    </li>
+  );
+}
+
+function ExerciseAlertItem({
+  alert,
+  days,
+  onDismiss,
+}: {
+  alert: ExerciseAlert;
+  days: number;
+  onDismiss: () => void;
+}) {
+  const deadlineStr = new Date(alert.deadline).toLocaleDateString("zh-CN");
+  const expired = days < 0;
+  const lastDay = days === 0;
+
+  return (
+    <li className="flex flex-wrap items-center gap-2 text-sm text-amber-800">
+      <span>
+        <span className="font-medium">{alert.planTitle}</span>：
+        {expired ? (
+          <>
+            <span className="font-semibold text-red-700">行权期已到期</span>
+            ，未行权期权
+            <span className="font-semibold">{alert.operableOptions}</span> 份
+            已失效。
+          </>
+        ) : lastDay ? (
+          <>
+            已归属未行权期权：
+            <span className="font-semibold">{alert.operableOptions}</span> 份，
+            <span className="font-semibold text-red-700">今日是最后行权日</span>
+            （{deadlineStr}）。
+          </>
+        ) : (
+          <>
+            您有一条期权授予的行权期即将到期，已归属未行权期权：
+            <span className="font-semibold">{alert.operableOptions}</span> 份，
+            行权截止日：<span className="font-semibold">{deadlineStr}</span>，
             剩余 <span className="font-semibold">{days}</span> 天。
           </>
         )}
