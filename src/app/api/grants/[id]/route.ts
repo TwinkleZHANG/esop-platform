@@ -32,16 +32,20 @@ const updateSchema = z.object({
   exercisePeriodYears: z.number().int().positive().optional().nullable(),
 });
 
-const patchSchema = z.object({
-  to: z.enum([
-    "GRANTED",
-    "CLOSING",
-    "CLOSED",
-  ]),
-  agreementId: z.string().optional().nullable(),
-  closedReason: z.string().optional().nullable(),
-  exerciseWindowDays: z.number().int().min(0).max(3650).optional(),
-});
+const patchSchema = z.union([
+  // 状态流转
+  z.object({
+    to: z.enum(["GRANTED", "CLOSING", "CLOSED"]),
+    agreementId: z.string().optional().nullable(),
+    closedReason: z.string().optional().nullable(),
+    exerciseWindowDays: z.number().int().min(0).max(3650).optional(),
+  }),
+  // Closing 窗口期截止日二次修改（PRD 4.5）
+  z.object({
+    action: z.literal("UPDATE_WINDOW_DEADLINE"),
+    newDeadline: z.string().min(1, "截止日必填"),
+  }),
+]);
 
 export async function GET(
   _req: Request,
@@ -237,7 +241,6 @@ export async function PATCH(
   if (!parsed.success) {
     return fail(parsed.error.issues[0]?.message ?? "参数错误");
   }
-  const d = parsed.data;
 
   const grant = await prisma.grant.findUnique({
     where: { id: params.id },
@@ -245,6 +248,36 @@ export async function PATCH(
   });
   if (!grant) return fail("授予不存在", 404);
 
+  // ===== 修改 Closing 窗口期截止日（PRD 4.5）=====
+  if ("action" in parsed.data) {
+    const action = parsed.data;
+    const { hasPermission } = await import("@/lib/permissions");
+    if (!hasPermission(session.user.role, "grant.close")) {
+      return fail("无权限", 403);
+    }
+    if (grant.status !== GrantStatus.CLOSING) {
+      return fail("仅 Closing 状态可修改窗口期截止日");
+    }
+    if (!grant.exerciseWindowDeadline) {
+      return fail("当前授予未设置行权窗口期");
+    }
+    const dt = new Date(action.newDeadline);
+    if (isNaN(dt.getTime())) return fail("截止日格式错误");
+    if (grant.exerciseDeadline && dt.getTime() > grant.exerciseDeadline.getTime()) {
+      return fail("窗口期截止日不得晚于原行权截止日");
+    }
+    dt.setHours(23, 59, 59, 999);
+    if (dt.getTime() < Date.now()) {
+      return fail("新截止日不得早于当前时间");
+    }
+    await prisma.grant.update({
+      where: { id: grant.id },
+      data: { exerciseWindowDeadline: dt },
+    });
+    return ok({ id: grant.id, exerciseWindowDeadline: dt });
+  }
+
+  const d = parsed.data;
   const targetStatus = d.to as GrantStatus;
 
   // 权限：Draft → Granted 是审批管理员（grant.advance）；关闭是审批管理员（grant.close）

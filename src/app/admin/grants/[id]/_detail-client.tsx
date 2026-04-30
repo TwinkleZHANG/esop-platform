@@ -226,6 +226,37 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
               关闭授予
             </Button>
           )}
+          {canClose && isClosing && grant.exerciseWindowDeadline && (
+            <Button
+              variant="outline"
+              onClick={async () => {
+                const current = new Date(grant.exerciseWindowDeadline!)
+                  .toISOString()
+                  .slice(0, 10);
+                const input = prompt(
+                  "请输入新的行权窗口截止日（YYYY-MM-DD）。窗口期到期前可修改，截止日不得晚于原行权截止日。",
+                  current
+                );
+                if (!input) return;
+                const res = await fetch(`/api/grants/${grantId}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    action: "UPDATE_WINDOW_DEADLINE",
+                    newDeadline: input,
+                  }),
+                });
+                const json = await res.json();
+                if (!json.success) {
+                  alert(json.error ?? "修改失败");
+                  return;
+                }
+                await load();
+              }}
+            >
+              修改截止日
+            </Button>
+          )}
           {canDelete && isDraft && (
             <Button
               variant="outline"
