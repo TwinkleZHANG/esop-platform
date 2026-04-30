@@ -148,11 +148,13 @@ export async function POST(req: Request) {
 
   // ========== 1.5) RSU 缺估值的归属税务补生成 ==========
   // PRD 4.4 / 第 10 节：管理员录入估值后，下次定时任务自动补生成对应的税务事件。
-  // 扫描所有 RSU 的 VESTED 归属记录，若未关联 VESTING_TAX 则尝试补生成。
+  // 扫描在 Phase 1 之前就已是 VESTED 的 RSU 归属记录（actualVestDate 早于本次 cron 启动），
+  // 若未关联 VESTING_TAX 则尝试补生成。当次新翻转的记录已在 Phase 1 处理过，不再重复计入。
   const rsuVested = await prisma.vestingRecord.findMany({
     where: {
       status: VestingRecordStatus.VESTED,
       grant: { plan: { type: PlanType.RSU } },
+      actualVestDate: { lt: now },
     },
     select: {
       id: true,

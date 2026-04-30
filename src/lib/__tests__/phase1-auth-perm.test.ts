@@ -65,7 +65,7 @@ async function callAuthorize(
 // 创建用工主体（用于资产/grant 测试）
 async function createEmployerEntity(name = "默认主体") {
   return prisma.employerEntity.create({
-    data: { name, currency: "CNY" },
+    data: { name },
   });
 }
 
@@ -76,7 +76,6 @@ async function setupPlanAndApprovedGrant(opts: {
     | "DRAFT"
     | "GRANTED"
     | "ALL_SETTLED"
-    | "PARTIALLY_SETTLED"
     | "CLOSING"
     | "CLOSED";
 }) {
