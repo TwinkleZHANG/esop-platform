@@ -338,7 +338,6 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
                     <TableRow>
                       <TableHead>归属日期</TableHead>
                       <TableHead>归属数量</TableHead>
-                      <TableHead>可操作股数</TableHead>
                       {isOption && <TableHead>可行权期权</TableHead>}
                       <TableHead>状态</TableHead>
                       <TableHead>实际归属日</TableHead>
@@ -351,7 +350,6 @@ export function GrantDetailClient({ grantId }: { grantId: string }) {
                           {new Date(v.vestingDate).toLocaleDateString("zh-CN")}
                         </TableCell>
                         <TableCell>{v.quantity}</TableCell>
-                        <TableCell>{grant.operableShares}</TableCell>
                         {isOption && (
                           <TableCell>{v.exercisableOptions}</TableCell>
                         )}

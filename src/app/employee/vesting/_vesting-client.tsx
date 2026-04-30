@@ -41,8 +41,6 @@ interface Row {
   vestingDate: string;
   quantity: string;
   exercisableOptions: string;
-  /** Grant 层 operableShares — 同一 Grant 下所有行相同 */
-  grantOperableShares: string;
   status: VestingRecordStatus;
 }
 
@@ -153,7 +151,6 @@ export function EmployeeVestingClient() {
             <TableHead>类型</TableHead>
             <TableHead>归属日期</TableHead>
             <TableHead>归属数量</TableHead>
-            <TableHead>可操作股数</TableHead>
             <TableHead>可行权期权数</TableHead>
             <TableHead>状态</TableHead>
           </TableRow>
@@ -161,13 +158,13 @@ export function EmployeeVestingClient() {
         <TableBody>
           {loading && data.items.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="text-center text-muted-foreground">
+              <TableCell colSpan={6} className="text-center text-muted-foreground">
                 加载中...
               </TableCell>
             </TableRow>
           ) : data.items.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="text-center text-muted-foreground">
+              <TableCell colSpan={6} className="text-center text-muted-foreground">
                 暂无归属记录
               </TableCell>
             </TableRow>
@@ -182,7 +179,6 @@ export function EmployeeVestingClient() {
                   {new Date(v.vestingDate).toLocaleDateString("zh-CN")}
                 </TableCell>
                 <TableCell>{v.quantity}</TableCell>
-                <TableCell>{v.grantOperableShares}</TableCell>
                 <TableCell>
                   {v.planType === "RSU" ? "-" : v.exercisableOptions}
                 </TableCell>
